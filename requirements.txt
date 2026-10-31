@@ -1,2 +1,18 @@
+# Manipulacion de datos y analisis tabular
+pandas>=2.1.0
+numpy>=1.26.0
+
 # Entorno de notebooks
 ipykernel>=6.25.0
+
+# Framework de aplicaciones web y dashboards interactivos
+streamlit>=1.35.0
+
+# Motor de lectura y persistencia columnar Parquet
+pyarrow>=14.0.0
+
+# Visualizacion interactiva
+plotly>=5.18.0
+
+# Lectura y exportacion de archivos Excel (.xlsx)
+openpyxl>=3.1.0
