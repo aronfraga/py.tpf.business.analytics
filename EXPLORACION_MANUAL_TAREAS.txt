@@ -1,0 +1,59 @@
+Contabilizar cantidad registros STAFF o @DOC y luego eliminarlos
+
+**********
+ALGEBRA
+**********
+
+-- CALIFICACIONES --
+
+> AUTOEV1
+sacar /10
+reescalar notas a 0-100
+
+> AUTOEV2
+sacar /10
+reescalar notas a 0-100
+
+> PARCIAL1
+sacar /25 de notas
+reescalar notas a 0-100
+
+-- TRAZABILIDAD --
+Seccion: decidimos dejar los registros con subsección "Programa > Textos"
+
+-- PARTICIPACION --
+* Borrar columna email
+
+Avance:
+* 0 para "no aplica"
+* Pasar porcentajes (%) a 0.x
+
+Contabilizar cantidad registros STAFF o DOC y luego eliminarlos
+
+**********
+ALGORITMOS
+**********
+
+-- PARTICIPACION --
+* Borrar columna email
+
+Avance:
+* 0 para "no aplica"
+* Pasar porcentajes (%) a 0.x
+
+-- CALIFICACIONES --
+sacar /100
+
+**********
+PROB Y ESTAD
+**********
+
+-- CALIFICACIONES --
+sacar /100
+
+-- PARTICIPACION --
+* Borrar columna email
+
+Avance:
+* 0 para "no aplica"
+* Pasar porcentajes (%) a 0.x
