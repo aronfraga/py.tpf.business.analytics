@@ -15,6 +15,11 @@
 *.tmp
 *.swp
 
+# Cachés generadas por Python
+__pycache__/
+*.pyc
+*.pyo
+
 project.lock.json
 artifacts/
 publish/
