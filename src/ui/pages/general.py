@@ -2,8 +2,8 @@ from typing import Dict, List
 import plotly.graph_objects as go
 import streamlit as st
 from streamlit.delta_generator import DeltaGenerator
-from data.dummy_common import SUBJECTS
-from data.dummy_general import ACTIVE_INACTIVE, GENERAL_INTERPRETATION, GENERAL_KPIS, GRADE_DISTRIBUTION, PARTICIPATION_TREND
+from data.real_common import SUBJECTS
+from data.real_general import ACTIVE_INACTIVE, GENERAL_INTERPRETATION, GENERAL_KPIS, GRADE_DISTRIBUTION, PARTICIPATION_TREND
 from ui.components.cards import card_row
 from ui.components.charts import grouped_bar_chart, multi_line_chart, show_figure
 from ui.components.texts import interpretation, section_title

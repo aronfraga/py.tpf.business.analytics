@@ -1,8 +1,8 @@
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
-from data.dummy_common import SUBJECTS
-from data.dummy_traceability import ACTIVITY_HEATMAP, INTERACTIONS_BY_ACTION, TIMELINE, TRACEABILITY_INTERPRETATION
+from data.real_common import SUBJECTS
+from data.real_traceability import ACTIVITY_HEATMAP, INTERACTIONS_BY_ACTION, TIMELINE, TRACEABILITY_INTERPRETATION
 from ui.components.charts import heatmap, horizontal_bar_chart, line_chart, show_figure
 from ui.components.filters import selector
 from ui.components.texts import interpretation, section_title

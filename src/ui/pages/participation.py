@@ -3,8 +3,8 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 from streamlit.delta_generator import DeltaGenerator
-from data.dummy_common import DATE_RANGES, SUBJECTS
-from data.dummy_participation import ACCESS_EVOLUTION, ACTIVITY_BY_DATE, PARTICIPATION_INTERPRETATION
+from data.real_common import DATE_RANGES, SUBJECTS
+from data.real_participation import ACCESS_EVOLUTION, ACTIVITY_BY_DATE, PARTICIPATION_INTERPRETATION
 from ui.components.charts import bar_chart, line_chart, show_figure
 from ui.components.filters import selector
 from ui.components.texts import interpretation, section_title

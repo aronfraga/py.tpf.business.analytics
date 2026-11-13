@@ -3,8 +3,8 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 from streamlit.delta_generator import DeltaGenerator
-from data.dummy_common import SUBJECTS
-from data.dummy_correlation import CORRELATION, CORRELATION_INTERPRETATION, SCATTER, TREND_LINE
+from data.real_common import SUBJECTS
+from data.real_correlation import CORRELATION, CORRELATION_INTERPRETATION, SCATTER, TREND_LINE
 from ui.components.cards import kpi_card
 from ui.components.charts import scatter_with_trend, show_figure
 from ui.components.filters import selector
