@@ -1,6 +1,6 @@
 # Justificación de los KPI y decisiones de diseño
 
-Este documento explica, para cada indicador desarrollado (punto 6.2 del enunciado), **qué mide, por qué se lo eligió y por qué se lo calculó de esa forma**. Los KPI se agrupan como en el enunciado: Participación, Trazabilidad, Calificaciones y Cruces Analíticos. El grupo Matrícula todavía no está desarrollado.
+Este documento explica, para cada indicador desarrollado (punto 6.2 del enunciado), **qué mide, por qué se lo eligió y por qué se lo calculó de esa forma**. Los KPI se agrupan como en el enunciado: Participación, Trazabilidad, Calificaciones, Cruces Analíticos y Matrícula. En Matrícula se desarrollaron dos de los tres indicadores del enunciado (ver la sección 5).
 
 Las referencias a datos corresponden al corte del 24/10/2025 (fecha de la última interacción de los reportes).
 
@@ -10,7 +10,7 @@ Estas decisiones se aplican a todos los KPI y se explican una sola vez.
 
 | Decisión | Motivo |
 |---|---|
-| **El universo son los estudiantes matriculados** (salvo donde se indica lo contrario). | La matrícula es la fuente oficial de quién cursa. Los reportes de la plataforma listan además a personas no inscriptas, que distorsionarían los promedios. Los no matriculados con actividad se tratan aparte, en el grupo Matrícula. |
+| **El universo son los estudiantes matriculados** (salvo donde se indica lo contrario). | La matrícula es la fuente oficial de quién cursa. Los reportes de la plataforma listan además a personas no inscriptas, que distorsionarían los promedios. Los no matriculados con actividad se tratan aparte, en el grupo Matrícula (excepto en la cobertura de participación, que los incluye en su universo). |
 | **Los matriculados sin actividad cuentan con valor 0** en participación y trazabilidad. | Si solo se promediara a quienes entraron, los promedios quedarían inflados y se ocultaría justamente a quienes no participan. |
 | **Los resultados se expresan en porcentajes** y no en puntos absolutos. | Las asignaturas puntúan distinto (Álgebra hasta 120, las otras hasta 100) y se van a cargar más datos a lo largo de la cursada. Con porcentajes, los datos nuevos se suman sin cambiar el cálculo. |
 | **Las funciones son puras**: reciben y devuelven DataFrames, sin leer ni escribir archivos. | Se pueden probar, reutilizar y conectar con Streamlit sin efectos secundarios. La lectura de datos se hace en una única función por módulo. |
@@ -23,6 +23,7 @@ Estas decisiones se aplican a todos los KPI y se explican una sola vez.
 - **Álgebra tiene datos incompletos.** Solo hay 3 instrumentos cargados (2 autoevaluaciones y el 1° Parcial, 45 de 120 puntos). Faltan el Parcial 2, 3 autoevaluaciones y el recuperatorio. Los resultados de Álgebra reflejan la situación al momento del corte.
 - **La trazabilidad no trae identificador de sesión.** Las sesiones se infieren (ver más abajo).
 - **Las asociaciones medidas no prueban causalidad.**
+- **El campo `matriculado` del cruce incluye a los 7 registros con estado *Baja*** (2 en Álgebra, 2 en Algoritmos y 3 en Probabilidad). Los KPI de participación, trazabilidad, calificaciones y cruces los cuentan como matriculados; solo la situación académica (grupo Matrícula) los distingue como `baja`. El efecto es chico (menos del 2 % de cada asignatura), pero quedaría por decidir si se los excluye del universo.
 
 | Módulo | Contenido |
 |---|---|
@@ -30,6 +31,7 @@ Estas decisiones se aplican a todos los KPI y se explican una sola vez.
 | [kpis_trazabilidad.py](src/kpis/kpis_trazabilidad.py) | KPI de trazabilidad |
 | [kpis_calificaciones.py](src/kpis/kpis_calificaciones.py) | KPI de calificaciones |
 | [kpis_cruces.py](src/kpis/kpis_cruces.py) | Cruces analíticos |
+| [kpis_matricula.py](src/kpis/kpis_matricula.py) | KPI de matrícula |
 
 ---
 
@@ -304,3 +306,46 @@ Código: [kpis_cruces.py](src/kpis/kpis_cruces.py). Documentación ampliada y re
 - **Se agrega la dispersión del indicador más relacionado**, elegido por mayor correlación promedio.
 
 **Interpretación.** Estos indicadores sirven como **señal de riesgo de abandono** (quien no entra con constancia tampoco se presenta a evaluar) y no como predictor del rendimiento entre quienes rinden.
+
+---
+
+## 5. Matrícula
+
+Código: [kpis_matricula.py](src/kpis/kpis_matricula.py). Documentación ampliada: [matricula.ipynb](src/kpis/matricula.ipynb).
+
+**Indicadores incluidos.** Se desarrollaron dos de los tres que menciona el enunciado: la alerta de estudiantes no inscriptos pero activos y el gráfico de situación académica. El tercero, el mapa de estudiantes inscriptos pero sin participación, se evaluó y se dejó fuera de la entrega: alcanzaba a muy pocos estudiantes (7 casos, 5 estudiantes distintos, menos del 2 % de los matriculados de cada asignatura) y no justificaba un indicador propio.
+
+**Definiciones comunes**
+- **Activo:** estudiante con al menos una interacción en el aula (`interacciones > 0` en el reporte de participación).
+- **Matriculado:** figura en el listado oficial de matriculados de esa asignatura (campo `matriculado` del cruce).
+
+### 5.1 Estudiantes activos: matriculados y no matriculados (alerta de no inscriptos pero activos)
+
+**Qué mide.** Cuántos estudiantes activos de cada asignatura están matriculados y cuántos no. Los no matriculados activos son la alerta: usan el aula sin figurar como inscriptos.
+
+**Justificación.** La matrícula es la fuente oficial de quién cursa. Un estudiante que usa el aula sin estar inscripto es un caso que requiere revisión administrativa (inscripción pendiente, acceso por otra vía o inscripción dada de baja), y además queda fuera de los demás KPI, que trabajan solo con matriculados.
+
+**Decisiones de diseño**
+- **Activo es quien tuvo interacciones, y no quien figura en el reporte.** El reporte de participación lista a todo el padrón de la plataforma en cada aula (319 personas por asignatura), incluso a quienes nunca entraron. Si se contara la mera presencia en el reporte, casi todo el padrón aparecería como "activo".
+- **La salida es deliberadamente simple:** dos conteos por asignatura (matriculados activos y no matriculados activos) y el listado de los no matriculados. Se evaluó una versión con niveles de gravedad de la alerta y detalle por estudiante (sesiones, tiempo, evaluaciones rendidas, etc.) y se la descartó: el enunciado pide una alerta, y los conteos más el listado alcanzan para actuar sin sobrecargar el indicador.
+- **Control contra la integración:** las cantidades se verifican contra el resumen que genera el proceso de integración (`resumen_integracion`), de modo que ambos cálculos se validan entre sí.
+
+**Lectura del resultado.** Cerca del 40 % de los usuarios activos de cada aula no figura en la matrícula (105 no matriculados activos frente a 163 matriculados activos en Álgebra, 111 frente a 165 en Algoritmos y 109 frente a 164 en Probabilidad). Es una proporción alta que justifica el indicador como alerta.
+
+**Limitaciones.** El indicador detecta el caso pero no su causa. Además, el campo `matriculado` incluye a los registros con estado *Baja* (ver las limitaciones generales), por lo que quienes dieron de baja su inscripción y siguen activos se cuentan como matriculados.
+
+### 5.2 Situación académica general y por asignatura
+
+**Qué mide.** Cómo se distribuyen los estudiantes matriculados según su situación académica, en cada asignatura y en el conjunto de todas.
+
+**Justificación.** Es la mirada de matrícula sobre el rendimiento. El KPI de promocionados, regulares y libres (3.3) solo clasifica a quienes ya rindieron; este gráfico cubre **toda** la matrícula, e incorpora a quienes todavía no se presentaron y a quienes dieron de baja. Muestra de un vistazo cuánta gente está en cada situación.
+
+**Decisiones de diseño**
+- **Cinco situaciones:** promocionado, regular, libre, no se presentó y baja. Las tres primeras reutilizan la condición del KPI 3.3 (mismos umbrales, expresados en porcentaje del total posible), para que ambos indicadores sean coherentes entre sí.
+- **"No se presentó" se separa de "libre".** Quien no rindió ningún instrumento no tiene un desempeño bajo: no tiene desempeño medido todavía. Mezclarlos clasificaría como libres a estudiantes que simplemente no tuvieron oportunidad de sumar puntos.
+- **"Baja" tiene prioridad sobre las demás situaciones.** Un estudiante que dio de baja su inscripción no debe clasificarse por sus notas.
+- **La situación es el desempeño actual, no una proyección** de la condición final. A medida que se carguen más instrumentos, los estudiantes pasarán de "no se presentó" a las demás situaciones sin cambiar el cálculo.
+- **El resultado general suma todos los pares estudiante-asignatura.** Un estudiante que cursa varias asignaturas cuenta una vez en cada una, lo que mantiene el total consistente con los matriculados de cada asignatura (control incluido en el notebook).
+- **La salida es una tabla en formato largo** (asignatura, situación, estudiantes, porcentaje) con una fila "general" e incluyendo las situaciones sin estudiantes, lista para un gráfico de dona o de barras de Streamlit. Además se genera una imagen de barras horizontales al 100 %, que permite comparar asignaturas en la misma escala.
+
+**Limitaciones.** Álgebra tiene datos incompletos (ver las limitaciones generales), y el alto porcentaje de "no se presentó" en Algoritmos (35 %, frente a 13 % en las otras dos) puede deberse en parte a instrumentos todavía no cargados o no rendidos.
