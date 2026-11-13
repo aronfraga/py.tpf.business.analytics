@@ -1,4 +1,4 @@
-"""KPIs de trazabilidad: frecuencia de ingreso (semanal y mensual) e interacciones promedio por día.
+"""KPIs de trazabilidad: interacciones por tipo, frecuencia de ingreso, distribución temporal e interacciones por día.
 
 Entrada : data/integrado/trazabilidad_integrado.parquet (generado por integracion.ipynb)
           La carpeta data/ se busca en la raíz del proyecto (dos niveles arriba de src/kpis/).
@@ -15,6 +15,9 @@ Definiciones (ajustables):
                   sesión nueva empieza con el primer evento de un usuario (en una materia) o con el
                   primer evento después de más de `minutos_inactividad` (30 por defecto) sin actividad.
   - Día activo  : día calendario en el que el usuario tuvo al menos una interacción.
+  - Tipo        : clasificación de cada interacción según su sección y acción (ver TIPO_POR_SECCION):
+                  navegación (clics de acceso), material de estudio, evaluaciones, foros y mensajería,
+                  calificaciones y otros.
 """
 from pathlib import Path
 
@@ -25,13 +28,32 @@ DIAS_SEMANA = {0: "lunes", 1: "martes", 2: "miércoles", 3: "jueves", 4: "vierne
 # src/kpis/kpis_trazabilidad.py -> raíz del proyecto -> data/
 DATOS_POR_DEFECTO = Path(__file__).resolve().parents[2] / "data"
 
+# Tipo de interacción: las acciones de acceso son navegación (clics) sin importar la sección; el resto
+# se clasifica por sección. Lo que no figura acá cae en OTROS_TIPO.
+ACCIONES_NAVEGACION = {"Acceder", "Acceder actividad"}
+TIPO_NAVEGACION = "Navegación"
+OTROS_TIPO = "Otros"
+TIPO_POR_SECCION = {
+    "Programa > Textos": "Material de estudio",
+    "Programa > Material de estudio": "Material de estudio",
+    "Archivos": "Material de estudio",
+    "Programa > Evaluaciones": "Evaluaciones",
+    "Calificaciones": "Calificaciones",
+    "Foros": "Foros y mensajería",
+    "Programa > Temas": "Foros y mensajería",
+    "Webmail": "Foros y mensajería",
+    "Mensajeria": "Foros y mensajería",
+    "Contactos": "Foros y mensajería",
+}
+TIPOS = [TIPO_NAVEGACION, "Material de estudio", "Evaluaciones", "Foros y mensajería", "Calificaciones", OTROS_TIPO]
+
 
 # ----------------------------------------------------------------------------
 # Carga
 # ----------------------------------------------------------------------------
 def cargar_trazabilidad(datos, solo_matriculados=False):
     df = pd.read_parquet(datos / "integrado" / "trazabilidad_integrado.parquet",
-                         columns=["materia", "usuario", "fecha"])
+                         columns=["materia", "usuario", "fecha", "seccion", "accion"])
     if solo_matriculados:
         cruce = pd.read_parquet(datos / "integrado" / "cruce_matriculados_integrado.parquet",
                                 columns=["materia", "usuario", "matriculado"])
@@ -116,6 +138,68 @@ def interacciones_por_dia_semana(diario):
 
 
 # ----------------------------------------------------------------------------
+# KPI 3: cantidad de interacciones por tipo
+# ----------------------------------------------------------------------------
+def clasificar_interacciones(df):
+    """Tipo de cada interacción: navegación si la acción es un acceso; si no, según la sección."""
+    tipo = df["seccion"].map(TIPO_POR_SECCION).fillna(OTROS_TIPO)
+    return tipo.where(~df["accion"].isin(ACCIONES_NAVEGACION), TIPO_NAVEGACION)
+
+
+def interacciones_por_tipo(df):
+    """Interacciones por materia y tipo (ver TIPO_POR_SECCION). Incluye los tipos sin interacciones.
+
+    Devuelve: materia, tipo, interacciones, porcentaje (sobre el total de la materia).
+    """
+    res = (df.assign(tipo=clasificar_interacciones(df)).groupby(["materia", "tipo"]).size()
+             .unstack(fill_value=0).reindex(columns=TIPOS, fill_value=0)
+             .stack().rename("interacciones").reset_index())
+    res["porcentaje"] = (res["interacciones"] / res.groupby("materia")["interacciones"].transform("sum") * 100).round(2)
+    return res
+
+
+def interacciones_por_accion(df):
+    """Detalle por acción concreta (Ver texto, Descargar, Realizar evaluación...), de mayor a menor.
+
+    Devuelve: materia, accion, interacciones, porcentaje (sobre el total de la materia).
+    """
+    # Hay eventos sin acción registrada: se agrupan como "(sin acción)" para que los totales cierren
+    res = (df.assign(accion=df["accion"].fillna("(sin acción)")).groupby(["materia", "accion"]).size()
+             .rename("interacciones").reset_index())
+    res["porcentaje"] = (res["interacciones"] / res.groupby("materia")["interacciones"].transform("sum") * 100).round(2)
+    return res.sort_values(["materia", "interacciones"], ascending=[True, False]).reset_index(drop=True)
+
+
+# ----------------------------------------------------------------------------
+# KPI 4: distribución temporal de la actividad
+# ----------------------------------------------------------------------------
+def actividad_por_dia_y_franja(df, horas_por_franja=4):
+    """Interacciones por materia, día de la semana y franja horaria (insumo del mapa de calor).
+
+    Incluye las combinaciones sin actividad. Las franjas son de `horas_por_franja` horas
+    (deben dividir a 24): "00-04 h", "04-08 h", ...
+
+    Devuelve: materia, dia_semana, franja, interacciones, porcentaje (sobre el total de la materia).
+    """
+    d = df.assign(dia_num=df["fecha"].dt.dayofweek, franja_num=df["fecha"].dt.hour // horas_por_franja)
+    conteo = d.groupby(["materia", "dia_num", "franja_num"]).size()
+    franjas = range(24 // horas_por_franja)
+    completo = pd.MultiIndex.from_product([conteo.index.levels[0], DIAS_SEMANA.keys(), franjas],
+                                          names=["materia", "dia_num", "franja_num"])
+    res = conteo.reindex(completo, fill_value=0).rename("interacciones").reset_index()
+    res["dia_semana"] = res["dia_num"].map(DIAS_SEMANA)
+    res["franja"] = res["franja_num"].map(lambda i: f"{i * horas_por_franja:02d}-{(i + 1) * horas_por_franja:02d} h")
+    res["porcentaje"] = (res["interacciones"] / res.groupby("materia")["interacciones"].transform("sum") * 100).round(2)
+    return res[["materia", "dia_semana", "franja", "interacciones", "porcentaje"]]
+
+
+def matriz_dia_franja(actividad, materia, valor="interacciones"):
+    """Matriz día de la semana (filas) x franja horaria (columnas) de una materia, para `heatmap`."""
+    t = actividad[actividad["materia"] == materia]
+    return t.pivot(index="dia_semana", columns="franja", values=valor).reindex(list(DIAS_SEMANA.values()))
+
+
+# ----------------------------------------------------------------------------
 # Control: trazabilidad vs. columna `interacciones` del reporte de participación
 # ----------------------------------------------------------------------------
 def validar_contra_participacion(df, datos):
@@ -138,7 +222,9 @@ def calcular_kpis_trazabilidad(datos=None, solo_matriculados=False, minutos_inac
     """Calcula todos los KPIs de trazabilidad y los devuelve como DataFrames.
 
     Devuelve un dict con las claves: frecuencia_ingreso_semanal, frecuencia_ingreso_mensual,
-    interacciones_diarias, interacciones_resumen, interacciones_por_dia_semana.
+    interacciones_diarias (también sirve como línea temporal), interacciones_resumen,
+    interacciones_por_dia_semana, interacciones_por_tipo, interacciones_por_accion y
+    actividad_dia_franja.
     """
     datos = Path(datos) if datos else DATOS_POR_DEFECTO
     df = marcar_ingresos(cargar_trazabilidad(datos, solo_matriculados), minutos_inactividad)
@@ -149,5 +235,8 @@ def calcular_kpis_trazabilidad(datos=None, solo_matriculados=False, minutos_inac
         "interacciones_diarias": diario,
         "interacciones_resumen": resumen_interacciones(df, diario),
         "interacciones_por_dia_semana": interacciones_por_dia_semana(diario),
+        "interacciones_por_tipo": interacciones_por_tipo(df),
+        "interacciones_por_accion": interacciones_por_accion(df),
+        "actividad_dia_franja": actividad_por_dia_y_franja(df),
     }
 
