@@ -1,0 +1,10 @@
+﻿materia,inicio,periodo,ingresos,usuarios_activos,dias_activos_por_usuario,ingresos_por_usuario_activo,periodo_completo
+algebra,2025-08-01,2025-08,2805,264,6.55,10.62,False
+algebra,2025-09-01,2025-09,2155,206,7.18,10.46,True
+algebra,2025-10-01,2025-10,1570,180,5.82,8.72,False
+algoritmos,2025-08-01,2025-08,2976,273,6.65,10.9,False
+algoritmos,2025-09-01,2025-09,1851,203,6.49,9.12,True
+algoritmos,2025-10-01,2025-10,1043,162,4.73,6.44,False
+probabilidad,2025-08-01,2025-08,2934,266,6.75,11.03,False
+probabilidad,2025-09-01,2025-09,3518,209,8.95,16.83,True
+probabilidad,2025-10-01,2025-10,1805,197,5.99,9.16,False
