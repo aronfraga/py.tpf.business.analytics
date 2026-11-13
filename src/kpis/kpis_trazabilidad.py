@@ -1,25 +1,29 @@
 """KPIs de trazabilidad: frecuencia de ingreso (semanal y mensual) e interacciones promedio por día.
 
 Entrada : data/integrado/trazabilidad_integrado.parquet (generado por integracion.ipynb)
-Salida  : data/kpis/*.csv
+          La carpeta data/ se busca en la raíz del proyecto (dos niveles arriba de src/kpis/).
+Salida  : DataFrames de pandas (no se escriben archivos).
 
-Uso (desde la carpeta donde guardes este archivo, que debe estar dentro de la raíz del proyecto):
-    python kpis_trazabilidad.py
-    python kpis_trazabilidad.py --solo-matriculados --validar
+Uso:
+    from kpis_trazabilidad import calcular_kpis_trazabilidad
+    kpis = calcular_kpis_trazabilidad(solo_matriculados=True)
+    kpis["frecuencia_ingreso_semanal"]   # DataFrame
 
 Definiciones (ajustables):
   - Interacción : cada fila de trazabilidad (un evento: acceso, clic, navegación).
   - Ingreso     : inicio de una sesión. La trazabilidad no trae un identificador de sesión, así que una
                   sesión nueva empieza con el primer evento de un usuario (en una materia) o con el
-                  primer evento después de más de --inactividad minutos (30 por defecto) sin actividad.
+                  primer evento después de más de `minutos_inactividad` (30 por defecto) sin actividad.
   - Día activo  : día calendario en el que el usuario tuvo al menos una interacción.
 """
-import argparse
 from pathlib import Path
 
 import pandas as pd
 
 DIAS_SEMANA = {0: "lunes", 1: "martes", 2: "miércoles", 3: "jueves", 4: "viernes", 5: "sábado", 6: "domingo"}
+
+# src/kpis/kpis_trazabilidad.py -> raíz del proyecto -> data/
+DATOS_POR_DEFECTO = Path(__file__).resolve().parents[2] / "data"
 
 
 # ----------------------------------------------------------------------------
@@ -130,48 +134,20 @@ def validar_contra_participacion(df, datos):
 
 
 # ----------------------------------------------------------------------------
-def main():
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--datos", type=Path, default=Path(__file__).resolve().parent.parent / "data",
-                    help="carpeta data/ del proyecto (por defecto, la carpeta hermana de la carpeta de este archivo)")
-    ap.add_argument("--salida", type=Path, default=None, help="carpeta de salida (por defecto, <datos>/kpis)")
-    ap.add_argument("--inactividad", type=int, default=30, help="minutos sin actividad que cierran una sesión")
-    ap.add_argument("--solo-matriculados", action="store_true", help="excluye usuarios que no figuran como inscriptos")
-    ap.add_argument("--validar", action="store_true", help="compara contra las interacciones del reporte de participación")
-    args = ap.parse_args()
+def calcular_kpis_trazabilidad(datos=None, solo_matriculados=False, minutos_inactividad=30):
+    """Calcula todos los KPIs de trazabilidad y los devuelve como DataFrames.
 
-    salida = args.salida or args.datos / "kpis"
-    salida.mkdir(parents=True, exist_ok=True)
-
-    df = marcar_ingresos(cargar_trazabilidad(args.datos, args.solo_matriculados), args.inactividad)
-    print(f"{len(df)} eventos, {df['usuario'].nunique()} usuarios, "
-          f"{df['dia'].min().date()} -> {df['dia'].max().date()}, {int(df['es_ingreso'].sum())} ingresos")
-
-    semanal = frecuencia_ingreso(df, "W")
-    mensual = frecuencia_ingreso(df, "M")
+    Devuelve un dict con las claves: frecuencia_ingreso_semanal, frecuencia_ingreso_mensual,
+    interacciones_diarias, interacciones_resumen, interacciones_por_dia_semana.
+    """
+    datos = Path(datos) if datos else DATOS_POR_DEFECTO
+    df = marcar_ingresos(cargar_trazabilidad(datos, solo_matriculados), minutos_inactividad)
     diario = interacciones_diarias(df)
-    resumen = resumen_interacciones(df, diario)
-    dia_semana = interacciones_por_dia_semana(diario)
-
-    resultados = {
-        "frecuencia_ingreso_semanal": semanal,
-        "frecuencia_ingreso_mensual": mensual,
+    return {
+        "frecuencia_ingreso_semanal": frecuencia_ingreso(df, "W"),
+        "frecuencia_ingreso_mensual": frecuencia_ingreso(df, "M"),
         "interacciones_diarias": diario,
-        "interacciones_resumen": resumen,
-        "interacciones_por_dia_semana": dia_semana,
+        "interacciones_resumen": resumen_interacciones(df, diario),
+        "interacciones_por_dia_semana": interacciones_por_dia_semana(diario),
     }
-    for nombre, tabla in resultados.items():
-        tabla.to_csv(salida / f"{nombre}.csv", index=False, encoding="utf-8-sig")
 
-    print("\nFrecuencia de ingreso semanal (primeras filas):\n", semanal.head(8).to_string(index=False))
-    print("\nFrecuencia de ingreso mensual:\n", mensual.to_string(index=False))
-    print("\nInteracciones promedio por día:\n", resumen.to_string(index=False))
-
-    if args.validar:
-        print("\nTrazabilidad vs. interacciones de participación:\n",
-              validar_contra_participacion(df, args.datos).to_string(index=False))
-    print(f"\nArchivos guardados en {salida}")
-
-
-if __name__ == "__main__":
-    main()

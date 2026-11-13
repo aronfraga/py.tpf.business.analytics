@@ -16,3 +16,5 @@ plotly>=5.18.0
 
 # Lectura y exportacion de archivos Excel (.xlsx)
 openpyxl>=3.1.0
+# Graficos estaticos (imagenes de los KPI en los notebooks)
+matplotlib>=3.8.0
