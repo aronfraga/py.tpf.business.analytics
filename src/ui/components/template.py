@@ -2,11 +2,15 @@ from typing import Any, Dict, List
 
 import plotly.graph_objects as go
 
+from data.real_common import ALGEBRA, ALGORITHMS, PROBABILITY
+
 PALETTE: List[str] = ["#1F5C6B", "#E0A458", "#8A9BA8", "#4C9AA8", "#B5523B", "#6B8F71"]
 
 GROUP_ORDER: List[str] = ["Promociona", "Regular", "Libre", "No se presentó"]
 
 GROUP_COLORS: Dict[str, str] = {"Promociona": "#1F5C6B","Regular": "#E0A458", "Libre": "#B5523B", "No se presentó": "#8A9BA8"}
+
+SUBJECT_COLORS: Dict[str, str] = {ALGEBRA: PALETTE[0], ALGORITHMS: PALETTE[1], PROBABILITY: PALETTE[2]}
 
 TREND_COLOR: str = "#1E2A32"
 

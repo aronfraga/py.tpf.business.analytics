@@ -3,12 +3,14 @@ from typing import Any, Dict, List, Optional, Tuple
 import pandas as pd
 
 from data.real_common import (
+    SUBJECT_ALL,
     SUBJECT_KEYS,
     SUBJECTS,
     load_enrolled_traceability,
     load_enrollment_cross,
     load_grades,
     load_participation,
+    sum_tables,
 )
 from kpis.kpis_calificaciones import condicion_por_estudiante, nota_por_estudiante
 from kpis.kpis_trazabilidad import TIPOS, clasificar_interacciones, frecuencia_ingreso
@@ -24,6 +26,7 @@ OBTAINED_COLUMN: str = "nota_obtenida"
 MAXIMUM_COLUMN: str = "nota_max"
 CONDITION_COLUMN: str = "condicion"
 PERCENT_COLUMN: str = "nota_pct"
+SUBJECT_NAME_COLUMN: str = "subject"
 PERIOD_COLUMN: str = "periodo"
 ENTRIES_COLUMN: str = "ingresos"
 INSTRUMENT_COLUMN: str = "instrument"
@@ -39,6 +42,8 @@ GRADE_DECIMALS: int = 1
 GREEN: str = "green"
 YELLOW: str = "yellow"
 RED: str = "red"
+GRAY: str = "gray"
+NOT_ENROLLED_TEXT: str = "No inscripto"
 
 CONDITION_COLORS: Dict[str, str] = {
     "promocionado": GREEN,
@@ -214,7 +219,44 @@ def build_periods(traceability: pd.DataFrame, subject_key: str) -> List[str]:
 
     return sorted_periods
 
-def build_all() -> Tuple[List[str], Dict[str, Dict[str, Any]]]:
+def build_all_subjects_entry(entries: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
+    grade_tables: List[pd.DataFrame] = []
+    participation_series: Dict[str, pd.DataFrame] = {}
+    traceability_tables: List[pd.DataFrame] = []
+    lights: List[Tuple[Optional[str], str, str]] = []
+    no_grades: List[str] = []
+    not_enrolled: List[str] = []
+
+    for subject in SUBJECTS:
+        if subject not in entries:
+            not_enrolled.append(subject)
+            lights.append((subject, GRAY, NOT_ENROLLED_TEXT))
+            continue
+
+        entry: Dict[str, Any] = entries[subject]
+        grade_tables.append(entry["grades"].assign(**{SUBJECT_NAME_COLUMN: subject}))
+        participation_series[subject] = entry["participation"]
+        traceability_tables.append(entry["traceability"])
+        light: Tuple[Optional[str], str, str] = entry["traffic_lights"][0]
+        lights.append((subject, light[1], light[2]))
+
+        if len(entry["grades"]) == 0:
+            no_grades.append(subject)
+
+    grades_all: pd.DataFrame = pd.concat(grade_tables, ignore_index=True)
+    traceability_all: pd.DataFrame = sum_tables(traceability_tables, ["action"], ["count"])
+    result: Dict[str, Any] = {
+        "grades": grades_all,
+        "participation_series": participation_series,
+        "traceability": traceability_all,
+        "traffic_lights": lights,
+        "no_grades": no_grades,
+        "not_enrolled": not_enrolled,
+    }
+
+    return result
+
+def build_all() -> Tuple[List[str], Dict[str, Dict[str, Dict[str, Any]]], Dict[str, List[str]]]:
     participation: pd.DataFrame = load_participation()
     grades: pd.DataFrame = load_grades()
     enrollment_cross: pd.DataFrame = load_enrollment_cross()
@@ -226,8 +268,8 @@ def build_all() -> Tuple[List[str], Dict[str, Dict[str, Any]]]:
     percents: Dict[Tuple[str, str], float] = build_percents(grades=grades)
     is_enrolled: pd.Series = enrollment_cross[ENROLLED_COLUMN]
     enrolled_rows: pd.DataFrame = enrollment_cross.loc[is_enrolled]
-    options: List[str] = []
-    student_data: Dict[str, Dict[str, Any]] = {}
+    labels_by_user: Dict[str, str] = {}
+    subject_entries: Dict[str, Dict[str, Dict[str, Any]]] = {}
 
     for subject in SUBJECTS:
         subject_key: str = SUBJECT_KEYS[subject]
@@ -239,28 +281,40 @@ def build_all() -> Tuple[List[str], Dict[str, Dict[str, Any]]]:
         for user in users:
             pair: Tuple[str, str] = (subject_key, user)
             full_name: str = names[pair]
-            option: str = f"{user} – {full_name} ({subject})"
+            labels_by_user.setdefault(user, f"{user} – {full_name}")
             grades_table: pd.DataFrame = build_grades_table(student_grades=grade_groups.get(pair))
             participation_table: pd.DataFrame = build_participation_table(student_traceability=traceability_groups.get(pair), periods=periods)
             traceability_table: pd.DataFrame = build_traceability_table(student_traceability=traceability_groups.get(pair))
             color: str
             text: str
             color, text = build_traffic_light(condition=conditions.get(pair), percent=percents.get(pair))
-            options.append(option)
-            student_data[option] = {
+            entry: Dict[str, Any] = {
                 "grades": grades_table,
                 "participation": participation_table,
                 "traceability": traceability_table,
-                "traffic_light": color,
-                "traffic_light_text": text,
+                "traffic_lights": [(None, color, text)],
             }
+            subject_entries.setdefault(user, {})[subject] = entry
 
-    result: Tuple[List[str], Dict[str, Dict[str, Any]]] = (options, student_data)
+    student_data: Dict[str, Dict[str, Dict[str, Any]]] = {}
+    student_subjects: Dict[str, List[str]] = {}
+
+    for user in sorted(labels_by_user.keys()):
+        label: str = labels_by_user[user]
+        entries: Dict[str, Dict[str, Any]] = subject_entries[user]
+        student_data[label] = dict(entries)
+        student_data[label][SUBJECT_ALL] = build_all_subjects_entry(entries=entries)
+        student_subjects[label] = list(entries.keys())
+
+    options: List[str] = list(student_data.keys())
+    result: Tuple[List[str], Dict[str, Dict[str, Dict[str, Any]]], Dict[str, List[str]]] = (options, student_data, student_subjects)
 
     return result
 
-ALL_STUDENTS: Tuple[List[str], Dict[str, Dict[str, Any]]] = build_all()
+ALL_STUDENTS: Tuple[List[str], Dict[str, Dict[str, Dict[str, Any]]], Dict[str, List[str]]] = build_all()
 
 STUDENTS: List[str] = ALL_STUDENTS[0]
 
-STUDENT_DATA: Dict[str, Dict[str, Any]] = ALL_STUDENTS[1]
+STUDENT_DATA: Dict[str, Dict[str, Dict[str, Any]]] = ALL_STUDENTS[1]
+
+STUDENT_SUBJECTS: Dict[str, List[str]] = ALL_STUDENTS[2]

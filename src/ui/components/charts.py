@@ -3,7 +3,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
-from ui.components.template import GROUP_COLORS, GROUP_ORDER, HEATMAP_SCALE, TEMPLATE, TRANSPARENT, TREND_COLOR
+from ui.components.template import GROUP_COLORS, GROUP_ORDER, HEATMAP_SCALE, SUBJECT_COLORS, TEMPLATE, TRANSPARENT, TREND_COLOR
 
 def apply_template(figure: go.Figure, title: str, x_title: str, y_title: str) -> go.Figure:
     figure.layout.template = TEMPLATE
@@ -38,7 +38,8 @@ def bar_chart_by_subject(table: pd.DataFrame, x_column: str, y_column: str, subj
         values: List[Any] = subject_rows[y_column].tolist()
         subject_labels: List[Any] = [subject] * len(names)
         x_values: List[Any] = [subject_labels, names]
-        trace: go.Bar = go.Bar(name=subject, x=x_values, y=values, text=values, textposition="outside", cliponaxis=False)
+        subject_marker: Dict[str, Any] = {"color": SUBJECT_COLORS.get(subject)}
+        trace: go.Bar = go.Bar(name=subject, x=x_values, y=values, text=values, textposition="outside", cliponaxis=False, marker=subject_marker)
         figure.add_trace(trace)
 
     result: go.Figure = apply_template(figure, title, x_title, y_title)
@@ -75,7 +76,8 @@ def grouped_bar_chart(series: Dict[str, pd.DataFrame], x_column: str, y_column: 
     for name, table in series.items():
         x_values: List[Any] = table[x_column].tolist()
         y_values: List[Any] = table[y_column].tolist()
-        trace: go.Bar = go.Bar(name=name, x=x_values, y=y_values)
+        series_marker: Dict[str, Any] = {"color": SUBJECT_COLORS.get(name)}
+        trace: go.Bar = go.Bar(name=name, x=x_values, y=y_values, marker=series_marker)
         figure.add_trace(trace)
     
     bar_mode: str = "group"
@@ -118,7 +120,8 @@ def multi_line_chart(series: Dict[str, pd.DataFrame], x_column: str, y_column: s
     for name, table in series.items():
         x_values: List[Any] = table[x_column].tolist()
         y_values: List[Any] = table[y_column].tolist()
-        trace: go.Scatter = go.Scatter(name=name, x=x_values, y=y_values, mode=mode, line=line)
+        series_line: Dict[str, Any] = {"width": 3, "color": SUBJECT_COLORS.get(name)}
+        trace: go.Scatter = go.Scatter(name=name, x=x_values, y=y_values, mode=mode, line=series_line)
         figure.add_trace(trace)
     
     result: go.Figure = apply_template(figure, title, x_title, y_title)

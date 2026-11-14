@@ -177,6 +177,10 @@ div[data-testid="stDataFrame"] {
   background: var(--c-red);
 }
 
+.traffic-light-gray {
+  background: #C9D3D8;
+}
+
 .traffic-light-title {
   color: var(--c-text-soft);
   font-size: 0.78rem;
