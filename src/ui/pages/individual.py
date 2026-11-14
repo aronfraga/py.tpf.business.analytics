@@ -3,8 +3,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 from streamlit.delta_generator import DeltaGenerator
-from data.dummy_common import STUDENTS
-from data.dummy_individual import GRADES_LABELS, STUDENT_DATA
+from data.real_individual import GRADES_LABELS, STUDENT_DATA, STUDENTS
 from ui.components.charts import bar_chart, line_chart, show_figure
 from ui.components.filters import selector
 from ui.components.tables import table

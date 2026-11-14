@@ -3,8 +3,8 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 from streamlit.delta_generator import DeltaGenerator
-from data.dummy_common import SUBJECTS
-from data.dummy_enrollment import ALERTS, ALERTS_LABELS, ENROLLED_NO_PARTICIPATION, ENROLLED_NO_PARTICIPATION_LABELS, ENROLLED_VS_ACTIVE, ENROLLMENT_INTERPRETATION, ENROLLMENT_KPIS, NOT_ENROLLED_ACTIVE, NOT_ENROLLED_ACTIVE_LABELS
+from data.real_common import SUBJECTS
+from data.real_enrollment import ALERTS, ALERTS_LABELS, ENROLLED_NO_PARTICIPATION, ENROLLED_NO_PARTICIPATION_LABELS, ENROLLED_VS_ACTIVE, ENROLLMENT_INTERPRETATION, ENROLLMENT_KPIS, NOT_ENROLLED_ACTIVE, NOT_ENROLLED_ACTIVE_LABELS
 from ui.components.cards import card_row
 from ui.components.charts import bar_chart, show_figure
 from ui.components.filters import selector

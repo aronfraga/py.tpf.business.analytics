@@ -56,6 +56,7 @@ INTEGRATED_PATH: Path = DATA_PATH / "integrado"
 PARTICIPATION_FILE: str = "participacion_integrado.parquet"
 GRADES_FILE: str = "calificaciones_integrado.parquet"
 ENROLLMENT_CROSS_FILE: str = "cruce_matriculados_integrado.parquet"
+ENROLLMENT_LIST_FILE: str = "matriculados_integrado.parquet"
 
 def window_start(range_label: str) -> pd.Timestamp:
     result: pd.Timestamp
@@ -90,6 +91,21 @@ def load_enrollment_cross() -> pd.DataFrame:
     cross: pd.DataFrame = pd.read_parquet(file_path)
 
     return cross
+
+@st.cache_data
+def load_enrollment_list() -> pd.DataFrame:
+    file_path: Path = INTEGRATED_PATH / ENROLLMENT_LIST_FILE
+    enrollment_list: pd.DataFrame = pd.read_parquet(file_path)
+
+    return enrollment_list
+
+@st.cache_data
+def load_all_traceability() -> pd.DataFrame:
+    only_enrolled: bool = False
+    loaded: pd.DataFrame = cargar_trazabilidad(datos=DATA_PATH, solo_matriculados=only_enrolled)
+    marked: pd.DataFrame = marcar_ingresos(df=loaded, minutos_inactividad=INACTIVITY_MINUTES)
+
+    return marked
 
 @st.cache_data
 def load_enrolled_traceability() -> pd.DataFrame:
