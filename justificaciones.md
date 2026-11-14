@@ -109,7 +109,7 @@ Código: [kpis_trazabilidad.py](src/kpis/kpis_trazabilidad.py).
 
 **Decisiones de diseño**
 - **Los 50 tipos de acción del log se agrupan en 6 tipos:** Navegación, Material de estudio, Evaluaciones, Foros y mensajería, Calificaciones y Otros. Tantas categorías serían ilegibles en un gráfico; seis permiten comparar.
-- **Las acciones de acceso ("Acceder") se tratan como navegación sin importar la sección**, porque equivalen a los "clics" que pide el enunciado. El resto se clasifica por sección.
+- **Las acciones de acceso ("Acceder") se tratan como navegación sin importar la sección**, porque equivalen a los "clics". El resto se clasifica por sección.
 - **Las reglas están en un diccionario editable** (`TIPO_POR_SECCION`), de modo que reclasificar una sección es un cambio de una línea.
 - **Supuesto a revisar:** la sección "Programa > Temas" se clasificó como Foros y mensajería porque sus acciones son "Agregar intervención" y "Ver participación".
 - **Se ofrece también el detalle por acción concreta**, para el gráfico de barras horizontales.
