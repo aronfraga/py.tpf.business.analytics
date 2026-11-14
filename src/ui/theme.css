@@ -91,7 +91,8 @@
 
 .kpi-detail {
   color: var(--c-text-soft);
-  font-size: 0.82rem;
+  font-size: 1rem;
+  font-weight: 700;
 }
 
 div[data-testid="stPlotlyChart"] {

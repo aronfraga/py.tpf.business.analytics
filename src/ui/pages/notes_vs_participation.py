@@ -3,7 +3,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 from streamlit.delta_generator import DeltaGenerator
-from data.real_common import SUBJECTS
+from data.real_common import SUBJECT_OPTIONS
 from data.real_correlation import CORRELATION, RISK_LABELS, RISK_STUDENTS, SCATTER, TREND_LINE
 from ui.components.cards import kpi_card
 from ui.components.charts import scatter_by_group, show_figure
@@ -17,7 +17,7 @@ def show() -> None:
 
     subject_label: str = "Asignatura"
     subject_key: str = "correlation_subject"
-    subject: str = selector(subject_label, SUBJECTS, subject_key)
+    subject: str = selector(subject_label, SUBJECT_OPTIONS, subject_key)
     points: pd.DataFrame = SCATTER[subject]
     trend: pd.DataFrame = TREND_LINE[subject]
     card: Dict[str, str] = CORRELATION[subject]

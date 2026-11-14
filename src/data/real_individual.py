@@ -10,7 +10,7 @@ from data.real_common import (
     load_grades,
     load_participation,
 )
-from kpis.kpis_calificaciones import condicion_por_estudiante
+from kpis.kpis_calificaciones import condicion_por_estudiante, nota_por_estudiante
 from kpis.kpis_trazabilidad import TIPOS, clasificar_interacciones, frecuencia_ingreso
 
 SUBJECT_COLUMN: str = "materia"
@@ -23,6 +23,7 @@ FILE_ID_COLUMN: str = "id_archivo"
 OBTAINED_COLUMN: str = "nota_obtenida"
 MAXIMUM_COLUMN: str = "nota_max"
 CONDITION_COLUMN: str = "condicion"
+PERCENT_COLUMN: str = "nota_pct"
 PERIOD_COLUMN: str = "periodo"
 ENTRIES_COLUMN: str = "ingresos"
 INSTRUMENT_COLUMN: str = "instrument"
@@ -161,7 +162,19 @@ def build_traceability_table(student_traceability: Optional[pd.DataFrame]) -> pd
 
     return result
 
-def build_traffic_light(condition: Optional[str]) -> Tuple[str, str]:
+def build_percents(grades: pd.DataFrame) -> Dict[Tuple[str, str], float]:
+    student_grades: pd.DataFrame = nota_por_estudiante(calificaciones=grades)
+    percents: Dict[Tuple[str, str], float] = {}
+
+    for row in student_grades.itertuples(index=False):
+        subject_key: str = getattr(row, SUBJECT_COLUMN)
+        user: str = getattr(row, USER_COLUMN)
+        pair: Tuple[str, str] = (subject_key, user)
+        percents[pair] = float(getattr(row, PERCENT_COLUMN))
+
+    return percents
+
+def build_traffic_light(condition: Optional[str], percent: Optional[float] = None) -> Tuple[str, str]:
     color: str
     text: str
 
@@ -171,6 +184,9 @@ def build_traffic_light(condition: Optional[str]) -> Tuple[str, str]:
     else:
         color = CONDITION_COLORS[condition]
         text = CONDITION_TEXTS[condition]
+
+    if percent is not None:
+        text = f"{text} · {round(percent)}%"
 
     result: Tuple[str, str] = (color, text)
 
@@ -207,6 +223,7 @@ def build_all() -> Tuple[List[str], Dict[str, Dict[str, Any]]]:
     grade_groups: Dict[Tuple[str, str], pd.DataFrame] = group_by_pair(table=grades)
     traceability_groups: Dict[Tuple[str, str], pd.DataFrame] = group_by_pair(table=traceability)
     conditions: Dict[Tuple[str, str], str] = build_conditions(grades=grades, enrollment_cross=enrollment_cross)
+    percents: Dict[Tuple[str, str], float] = build_percents(grades=grades)
     is_enrolled: pd.Series = enrollment_cross[ENROLLED_COLUMN]
     enrolled_rows: pd.DataFrame = enrollment_cross.loc[is_enrolled]
     options: List[str] = []
@@ -228,7 +245,7 @@ def build_all() -> Tuple[List[str], Dict[str, Dict[str, Any]]]:
             traceability_table: pd.DataFrame = build_traceability_table(student_traceability=traceability_groups.get(pair))
             color: str
             text: str
-            color, text = build_traffic_light(condition=conditions.get(pair))
+            color, text = build_traffic_light(condition=conditions.get(pair), percent=percents.get(pair))
             options.append(option)
             student_data[option] = {
                 "grades": grades_table,

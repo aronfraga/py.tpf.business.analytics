@@ -1,11 +1,13 @@
+from typing import Dict
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 from streamlit.delta_generator import DeltaGenerator
-from data.real_common import SUBJECTS
+from data.real_common import SUBJECT_ALL, SUBJECT_OPTIONS
 from data.real_performance import COURSE_STATUS, GRADE_HISTOGRAM, INSTRUMENT_COMPARISON
-from ui.components.charts import bar_chart, donut_chart, histogram, show_figure
+from ui.components.charts import bar_chart, bar_chart_by_subject, donut_chart, histogram, show_figure
 from ui.components.filters import selector
+from ui.components.template import GROUP_COLORS
 from ui.components.texts import section_title
 
 def show() -> None:
@@ -14,7 +16,7 @@ def show() -> None:
     
     subject_label: str = "Asignatura"
     subject_key: str = "performance_subject"
-    subject: str = selector(subject_label, SUBJECTS, subject_key)
+    subject: str = selector(subject_label, SUBJECT_OPTIONS, subject_key)
     instruments: pd.DataFrame = INSTRUMENT_COMPARISON[subject]
     grades: pd.DataFrame = GRADE_HISTOGRAM[subject]
     status: pd.DataFrame = COURSE_STATUS[subject]
@@ -26,7 +28,13 @@ def show() -> None:
     instruments_title: str = "Promedio por instrumento"
     instruments_x_title: str = "Instrumento"
     instruments_y_title: str = "Nota promedio"
-    instruments_figure: go.Figure = bar_chart(instruments, instrument_column, average_column, instruments_title, instruments_x_title, instruments_y_title)
+    instruments_figure: go.Figure
+
+    if subject == SUBJECT_ALL:
+        instruments_figure = bar_chart_by_subject(instruments, instrument_column, average_column, "subject", instruments_title, instruments_x_title, instruments_y_title)
+    else:
+        instruments_figure = bar_chart(instruments, instrument_column, average_column, instruments_title, instruments_x_title, instruments_y_title)
+
     show_figure(instruments_figure)
     
     grades_section: str = "Notas y condición"
@@ -44,7 +52,8 @@ def show() -> None:
     histogram_figure: go.Figure = histogram(grades, range_column, count_column, histogram_title, histogram_x_title, histogram_y_title)
     status_label_column: str = "status"
     status_title: str = "Libre / Regular / Promociona"
-    status_figure: go.Figure = donut_chart(status, status_label_column, count_column, status_title)
+    status_colors: Dict[str, str] = {"Promociona": GROUP_COLORS["Promociona"], "Regular": GROUP_COLORS["Regular"], "Libre": GROUP_COLORS["No se presentó"]}
+    status_figure: go.Figure = donut_chart(status, status_label_column, count_column, status_title, status_colors)
     
     with histogram_column:
         show_figure(histogram_figure)

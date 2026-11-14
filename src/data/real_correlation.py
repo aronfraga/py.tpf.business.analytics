@@ -3,8 +3,10 @@ from typing import Any, Dict, List, Optional, Tuple
 import pandas as pd
 
 from data.real_common import (
+    ALL_KEY,
+    SUBJECT_ALL,
     SUBJECT_KEYS,
-    SUBJECTS,
+    SUBJECT_OPTIONS,
     load_enrolled_traceability,
     load_enrollment_cross,
     load_grades,
@@ -281,6 +283,12 @@ def build_card(correlations: pd.DataFrame, subject: str) -> Dict[str, str]:
 
     return result
 
+def add_pooled_rows(table: pd.DataFrame) -> pd.DataFrame:
+    pooled: pd.DataFrame = table.assign(**{SUBJECT_COLUMN: ALL_KEY})
+    result: pd.DataFrame = pd.concat([table, pooled], ignore_index=True)
+
+    return result
+
 def build_all() -> Dict[str, Dict[str, object]]:
     traceability: pd.DataFrame = load_enrolled_traceability()
     grades: pd.DataFrame = load_grades()
@@ -290,8 +298,9 @@ def build_all() -> Dict[str, Dict[str, object]]:
         grades=grades,
         enrollment_cross=enrollment_cross,
     )
-    correlations: pd.DataFrame = correlacion_participacion_nota(tabla=points_table)
-    trend_table: pd.DataFrame = linea_de_tendencia(tabla=points_table)
+    pooled_points: pd.DataFrame = add_pooled_rows(points_table)
+    correlations: pd.DataFrame = correlacion_participacion_nota(tabla=pooled_points)
+    trend_table: pd.DataFrame = linea_de_tendencia(tabla=pooled_points)
     participation: pd.DataFrame = load_participation()
     conditions: Dict[Tuple[str, str], str] = build_conditions(grades=grades, enrollment_cross=enrollment_cross)
     grouped_points: pd.DataFrame = add_groups(points_table=points_table, conditions=conditions)
@@ -302,11 +311,18 @@ def build_all() -> Dict[str, Dict[str, object]]:
     cards: Dict[str, Dict[str, str]] = {}
     risks: Dict[str, pd.DataFrame] = {}
 
-    for subject in SUBJECTS:
-        scatter[subject] = build_scatter_table(source=grouped_points, subject=subject)
+    pooled_grouped: pd.DataFrame = add_pooled_rows(grouped_points)
+
+    for subject in SUBJECT_OPTIONS:
+        scatter[subject] = build_scatter_table(source=pooled_grouped, subject=subject)
         trend[subject] = build_xy_table(source=trend_table, subject=subject)
         cards[subject] = build_card(correlations=correlations, subject=subject)
-        risks[subject] = build_risk_table(grouped_points=grouped_points, participation_index=participation_index, cutoff=cutoff, subject=subject)
+
+        if subject != SUBJECT_ALL:
+            risks[subject] = build_risk_table(grouped_points=grouped_points, participation_index=participation_index, cutoff=cutoff, subject=subject)
+
+    all_risks: pd.DataFrame = pd.concat(list(risks.values()), ignore_index=True)
+    risks[SUBJECT_ALL] = all_risks.sort_values(by=["sessions", "student"]).reset_index(drop=True)
 
     result: Dict[str, Dict[str, object]] = {
         "scatter": scatter,

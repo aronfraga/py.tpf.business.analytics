@@ -27,6 +27,25 @@ def bar_chart(table: pd.DataFrame, x_column: str, y_column: str, title: str, x_t
     
     return result
 
+def bar_chart_by_subject(table: pd.DataFrame, x_column: str, y_column: str, subject_column: str, title: str, x_title: str, y_title: str) -> go.Figure:
+    figure: go.Figure = go.Figure()
+    subjects: List[Any] = table[subject_column].drop_duplicates().tolist()
+
+    for subject in subjects:
+        is_subject: pd.Series = table[subject_column] == subject
+        subject_rows: pd.DataFrame = table.loc[is_subject]
+        names: List[Any] = subject_rows[x_column].tolist()
+        values: List[Any] = subject_rows[y_column].tolist()
+        subject_labels: List[Any] = [subject] * len(names)
+        x_values: List[Any] = [subject_labels, names]
+        trace: go.Bar = go.Bar(name=subject, x=x_values, y=values, text=values, textposition="outside", cliponaxis=False)
+        figure.add_trace(trace)
+
+    result: go.Figure = apply_template(figure, title, x_title, y_title)
+    result.update_layout(showlegend=False)
+
+    return result
+
 def horizontal_bar_chart(table: pd.DataFrame, value_column: str, category_column: str, title: str, x_title: str) -> go.Figure:
     values: List[Any] = table[value_column].tolist()
     categories: List[Any] = table[category_column].tolist()
@@ -105,12 +124,17 @@ def multi_line_chart(series: Dict[str, pd.DataFrame], x_column: str, y_column: s
     result: go.Figure = apply_template(figure, title, x_title, y_title)
     return result
 
-def donut_chart(table: pd.DataFrame, label_column: str, value_column: str, title: str) -> go.Figure:
+def donut_chart(table: pd.DataFrame, label_column: str, value_column: str, title: str, colors: Optional[Dict[str, str]] = None) -> go.Figure:
     labels: List[Any] = table[label_column].tolist()
     values: List[Any] = table[value_column].tolist()
     hole: float = 0.55
     sort: bool = False
-    trace: go.Pie = go.Pie(labels=labels, values=values, hole=hole, sort=sort)
+    marker: Optional[Dict[str, Any]] = None
+
+    if colors is not None:
+        marker = {"colors": [colors.get(label) for label in labels]}
+
+    trace: go.Pie = go.Pie(labels=labels, values=values, hole=hole, sort=sort, marker=marker)
     traces: List[go.Pie] = [trace]
     figure: go.Figure = go.Figure(data=traces)
     figure.layout.template = TEMPLATE

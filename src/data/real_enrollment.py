@@ -3,12 +3,14 @@ from typing import Any, Dict, List, Tuple
 import pandas as pd
 
 from data.real_common import (
+    SUBJECT_ALL,
     SUBJECT_KEYS,
     SUBJECTS,
     load_all_traceability,
     load_enrollment_cross,
     load_enrollment_list,
     load_participation,
+    sum_tables,
 )
 from kpis.kpis_matricula import estudiantes_activos, resumen_activos_por_matricula
 
@@ -217,6 +219,16 @@ def build_cards(enrolled_count: int, enrolled_active: int, not_enrolled_active: 
 
     return cards
 
+def sum_cards(cards: Dict[str, List[Dict[str, str]]]) -> List[Dict[str, str]]:
+    per_subject: List[List[Dict[str, str]]] = list(cards.values())
+    result: List[Dict[str, str]] = []
+
+    for position, template in enumerate(per_subject[0]):
+        total: int = sum(int(subject_cards[position]["value"]) for subject_cards in per_subject)
+        result.append({"title": template["title"], "value": str(total), "detail": template["detail"]})
+
+    return result
+
 def build_enrolled_vs_active(enrolled_count: int, enrolled_active: int) -> pd.DataFrame:
     table_data: Dict[str, list] = {
         "status": ["Matriculados", "Activos"],
@@ -263,6 +275,12 @@ def build_all() -> Dict[str, Dict[str, Any]]:
             alerts_count=alerts_count,
         )
         enrolled_vs_active[subject] = build_enrolled_vs_active(enrolled_count=enrolled_count, enrolled_active=enrolled_active_count)
+
+    not_enrolled[SUBJECT_ALL] = pd.concat(list(not_enrolled.values()), ignore_index=True)
+    no_participation[SUBJECT_ALL] = pd.concat(list(no_participation.values()), ignore_index=True)
+    alerts[SUBJECT_ALL] = pd.concat(list(alerts.values()), ignore_index=True)
+    cards[SUBJECT_ALL] = sum_cards(cards=cards)
+    enrolled_vs_active[SUBJECT_ALL] = sum_tables(list(enrolled_vs_active.values()), ["status"], ["count"])
 
     result: Dict[str, Dict[str, Any]] = {
         "cards": cards,

@@ -1,9 +1,10 @@
 from typing import Dict, List
+import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 from streamlit.delta_generator import DeltaGenerator
 from data.real_common import SUBJECTS
-from data.real_general import ACTIVE_INACTIVE, GENERAL_KPIS, GRADE_DISTRIBUTION, PARTICIPATION_TREND
+from data.real_general import DEFAULT_INACTIVITY_DAYS, GRADE_DISTRIBUTION, PARTICIPATION_TREND, active_inactive_for_days, general_cards_for_days
 from ui.components.cards import card_row
 from ui.components.charts import grouped_bar_chart, multi_line_chart, show_figure
 from ui.components.texts import section_title
@@ -12,14 +13,22 @@ def show() -> None:
     page_title: str = "General"
     st.title(page_title)
     
+    days_key: str = "inactivity_days"
+    days: int = int(st.session_state.get(days_key, DEFAULT_INACTIVITY_DAYS))
+
     for subject in SUBJECTS:
         section_title(subject)
-        cards: List[Dict[str, str]] = GENERAL_KPIS[subject]
+        cards: List[Dict[str, str]] = general_cards_for_days(subject, days)
         card_row(cards)
-    
+
     students_section: str = "Estudiantes y notas"
     section_title(students_section)
-    
+
+    slider_label: str = "Días sin actividad para considerar inactivo a un alumno"
+    min_days: int = 1
+    max_days: int = 90
+    st.slider(slider_label, min_value=min_days, max_value=max_days, value=DEFAULT_INACTIVITY_DAYS, key=days_key)
+
     column_count: int = 2
     status_column: DeltaGenerator
     grades_column: DeltaGenerator
@@ -30,7 +39,11 @@ def show() -> None:
     status_x_title: str = "Estado"
     students_y_title: str = "Estudiantes"
     
-    status_figure: go.Figure = grouped_bar_chart(ACTIVE_INACTIVE, status_x, status_y, status_title, status_x_title, students_y_title)
+    active_inactive: Dict[str, pd.DataFrame] = {}
+    for subject in SUBJECTS:
+        active_inactive[subject] = active_inactive_for_days(subject, days)
+
+    status_figure: go.Figure = grouped_bar_chart(active_inactive,status_x, status_y, status_title, status_x_title, students_y_title)
     
     grades_x: str = "range"
     grades_y: str = "count"
