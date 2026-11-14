@@ -3,7 +3,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
-from ui.components.template import HEATMAP_SCALE, TEMPLATE, TRANSPARENT
+from ui.components.template import GROUP_COLORS, GROUP_ORDER, HEATMAP_SCALE, TEMPLATE, TRANSPARENT, TREND_COLOR
 
 def apply_template(figure: go.Figure, title: str, x_title: str, y_title: str) -> go.Figure:
     figure.layout.template = TEMPLATE
@@ -154,6 +154,35 @@ def scatter_with_trend(points: pd.DataFrame, trend: pd.DataFrame, x_column: str,
     
     result: go.Figure = apply_template(figure, title, x_title, y_title)
     
+    return result
+
+def scatter_by_group(points: pd.DataFrame, trend: pd.DataFrame, x_column: str, y_column: str, group_column: str, title: str, x_title: str, y_title: str) -> go.Figure:
+    figure: go.Figure = go.Figure()
+    points_mode: str = "markers"
+
+    for group in GROUP_ORDER:
+        is_group: pd.Series = points[group_column] == group
+        group_points: pd.DataFrame = points.loc[is_group]
+        group_x: List[Any] = group_points[x_column].tolist()
+        group_y: List[Any] = group_points[y_column].tolist()
+        group_color: str = GROUP_COLORS[group]
+        group_marker: Dict[str, Any] = {"size": 11, "opacity": 0.85, "color": group_color}
+        group_trace: go.Scatter = go.Scatter(name=group, x=group_x, y=group_y, mode=points_mode, marker=group_marker)
+        figure.add_trace(group_trace)
+
+    trend_x: List[Any] = trend[x_column].tolist()
+    trend_y: List[Any] = trend[y_column].tolist()
+    trend_name: str = "Tendencia"
+    trend_mode: str = "lines"
+    trend_line: Dict[str, Any] = {"width": 3, "dash": "dash", "color": TREND_COLOR}
+    trend_trace: go.Scatter = go.Scatter(name=trend_name, x=trend_x, y=trend_y, mode=trend_mode, line=trend_line)
+    figure.add_trace(trend_trace)
+
+    legend_position: Dict[str, Any] = {"y": -0.32}
+    bottom_margin: Dict[str, int] = {"b": 110}
+    figure.update_layout(legend=legend_position, margin=bottom_margin)
+    result: go.Figure = apply_template(figure, title, x_title, y_title)
+
     return result
 
 def show_figure(figure: go.Figure) -> None:

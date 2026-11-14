@@ -11,7 +11,7 @@ from data.real_common import (
     load_participation,
 )
 from kpis.kpis_calificaciones import condicion_por_estudiante
-from kpis.kpis_trazabilidad import frecuencia_ingreso
+from kpis.kpis_trazabilidad import TIPOS, clasificar_interacciones, frecuencia_ingreso
 
 SUBJECT_COLUMN: str = "materia"
 USER_COLUMN: str = "usuario"
@@ -138,6 +138,29 @@ def build_participation_table(student_traceability: Optional[pd.DataFrame], peri
 
     return result
 
+def build_traceability_table(student_traceability: Optional[pd.DataFrame]) -> pd.DataFrame:
+    counts: Dict[str, int] = {}
+
+    for type_name in TIPOS:
+        counts[type_name] = 0
+
+    if student_traceability is not None:
+        types: pd.Series = clasificar_interacciones(df=student_traceability)
+        type_counts: pd.Series = types.value_counts()
+
+        for type_name, type_value in type_counts.items():
+            counts[type_name] = int(type_value)
+
+    actions: List[str] = list(counts.keys())
+    values: List[int] = list(counts.values())
+    table_data: Dict[str, list] = {
+        "action": actions,
+        "count": values,
+    }
+    result: pd.DataFrame = pd.DataFrame(table_data)
+
+    return result
+
 def build_traffic_light(condition: Optional[str]) -> Tuple[str, str]:
     color: str
     text: str
@@ -202,6 +225,7 @@ def build_all() -> Tuple[List[str], Dict[str, Dict[str, Any]]]:
             option: str = f"{user} – {full_name} ({subject})"
             grades_table: pd.DataFrame = build_grades_table(student_grades=grade_groups.get(pair))
             participation_table: pd.DataFrame = build_participation_table(student_traceability=traceability_groups.get(pair), periods=periods)
+            traceability_table: pd.DataFrame = build_traceability_table(student_traceability=traceability_groups.get(pair))
             color: str
             text: str
             color, text = build_traffic_light(condition=conditions.get(pair))
@@ -209,6 +233,7 @@ def build_all() -> Tuple[List[str], Dict[str, Dict[str, Any]]]:
             student_data[option] = {
                 "grades": grades_table,
                 "participation": participation_table,
+                "traceability": traceability_table,
                 "traffic_light": color,
                 "traffic_light_text": text,
             }

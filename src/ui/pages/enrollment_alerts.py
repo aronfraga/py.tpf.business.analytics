@@ -4,12 +4,12 @@ import plotly.graph_objects as go
 import streamlit as st
 from streamlit.delta_generator import DeltaGenerator
 from data.real_common import SUBJECTS
-from data.real_enrollment import ALERTS, ALERTS_LABELS, ENROLLED_NO_PARTICIPATION, ENROLLED_NO_PARTICIPATION_LABELS, ENROLLED_VS_ACTIVE, ENROLLMENT_INTERPRETATION, ENROLLMENT_KPIS, NOT_ENROLLED_ACTIVE, NOT_ENROLLED_ACTIVE_LABELS
+from data.real_enrollment import ALERTS, ALERTS_LABELS, ENROLLED_NO_PARTICIPATION, ENROLLED_NO_PARTICIPATION_LABELS, ENROLLED_VS_ACTIVE, ENROLLMENT_KPIS, NOT_ENROLLED_ACTIVE, NOT_ENROLLED_ACTIVE_LABELS
 from ui.components.cards import card_row
 from ui.components.charts import bar_chart, show_figure
 from ui.components.filters import selector
 from ui.components.tables import table
-from ui.components.texts import interpretation, section_title
+from ui.components.texts import section_title
 
 def show() -> None:
     page_title: str = "Matrícula y Alertas"
@@ -23,7 +23,6 @@ def show() -> None:
     not_enrolled: pd.DataFrame = NOT_ENROLLED_ACTIVE[subject]
     no_participation: pd.DataFrame = ENROLLED_NO_PARTICIPATION[subject]
     alerts: pd.DataFrame = ALERTS[subject]
-    text: str = ENROLLMENT_INTERPRETATION[subject]
     card_row(cards)
     
     enrolled_section: str = "Matriculados vs. activos"
@@ -57,6 +56,5 @@ def show() -> None:
     
     alerts_title: str = "Alertas de la asignatura"
     table(alerts, alerts_title, ALERTS_LABELS)
-    interpretation(text)
 
 show()

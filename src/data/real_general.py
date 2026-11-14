@@ -182,10 +182,3 @@ ACTIVE_INACTIVE: Dict[str, pd.DataFrame] = ALL_TABLES["active_inactive"]
 GRADE_DISTRIBUTION: Dict[str, pd.DataFrame] = ALL_TABLES["distribution"]
 
 PARTICIPATION_TREND: Dict[str, pd.DataFrame] = ALL_TABLES["trend"]
-
-GENERAL_INTERPRETATION: str = (
-    "Las tres asignaturas muestran una participación creciente a lo largo del "
-    "período. Algoritmos y Estructuras de Datos concentra la mayor matrícula y el "
-    "mayor promedio de sesiones, mientras que Probabilidad y Estadística presenta "
-    "la proporción más alta de estudiantes inactivos."
-)

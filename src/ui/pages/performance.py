@@ -3,10 +3,10 @@ import plotly.graph_objects as go
 import streamlit as st
 from streamlit.delta_generator import DeltaGenerator
 from data.real_common import SUBJECTS
-from data.real_performance import COURSE_STATUS, GRADE_HISTOGRAM, INSTRUMENT_COMPARISON, PERFORMANCE_INTERPRETATION
+from data.real_performance import COURSE_STATUS, GRADE_HISTOGRAM, INSTRUMENT_COMPARISON
 from ui.components.charts import bar_chart, donut_chart, histogram, show_figure
 from ui.components.filters import selector
-from ui.components.texts import interpretation, section_title
+from ui.components.texts import section_title
 
 def show() -> None:
     page_title: str = "Rendimiento Académico"
@@ -18,7 +18,6 @@ def show() -> None:
     instruments: pd.DataFrame = INSTRUMENT_COMPARISON[subject]
     grades: pd.DataFrame = GRADE_HISTOGRAM[subject]
     status: pd.DataFrame = COURSE_STATUS[subject]
-    text: str = PERFORMANCE_INTERPRETATION[subject]
     instruments_section: str = "Instrumentos de evaluación"
     section_title(instruments_section)
     
@@ -51,6 +50,5 @@ def show() -> None:
         show_figure(histogram_figure)
     with status_column:
         show_figure(status_figure)
-    interpretation(text)
 
 show()

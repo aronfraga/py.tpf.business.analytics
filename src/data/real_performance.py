@@ -3,9 +3,6 @@ from typing import Dict, List
 import pandas as pd
 
 from data.real_common import (
-    ALGEBRA,
-    ALGORITHMS,
-    PROBABILITY,
     SUBJECT_KEYS,
     SUBJECTS,
     load_enrollment_cross,
@@ -165,18 +162,3 @@ INSTRUMENT_COMPARISON: Dict[str, pd.DataFrame] = ALL_TABLES["instruments"]
 GRADE_HISTOGRAM: Dict[str, pd.DataFrame] = ALL_TABLES["histogram"]
 
 COURSE_STATUS: Dict[str, pd.DataFrame] = ALL_TABLES["status"]
-
-PERFORMANCE_INTERPRETATION: Dict[str, str] = {
-    ALGEBRA: (
-        "Los trabajos prácticos obtienen mejores promedios que los parciales. El "
-        "recuperatorio muestra el promedio más bajo."
-    ),
-    ALGORITHMS: (
-        "El TP Integrador alcanza el promedio más alto. La distribución de notas se "
-        "concentra entre 6 y 8."
-    ),
-    PROBABILITY: (
-        "Los cuestionarios superan a los parciales en promedio. Un tercio de los "
-        "estudiantes activos queda en condición Libre."
-    ),
-}

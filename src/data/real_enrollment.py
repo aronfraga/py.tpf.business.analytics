@@ -3,9 +3,6 @@ from typing import Any, Dict, List, Tuple
 import pandas as pd
 
 from data.real_common import (
-    ALGEBRA,
-    ALGORITHMS,
-    PROBABILITY,
     SUBJECT_KEYS,
     SUBJECTS,
     load_all_traceability,
@@ -288,19 +285,3 @@ NOT_ENROLLED_ACTIVE: Dict[str, pd.DataFrame] = ALL_TABLES["not_enrolled"]
 ENROLLED_NO_PARTICIPATION: Dict[str, pd.DataFrame] = ALL_TABLES["no_participation"]
 
 ALERTS: Dict[str, pd.DataFrame] = ALL_TABLES["alerts"]
-
-ENROLLMENT_INTERPRETATION: Dict[str, str] = {
-    ALGEBRA: (
-        "Ocho de cada diez matriculados están activos. Hay usuarios con actividad que "
-        "no figuran en la matrícula y estudiantes inscriptos que nunca ingresaron."
-    ),
-    ALGORITHMS: (
-        "Es la asignatura con más matriculados y la mayor cantidad de estudiantes "
-        "inactivos en términos absolutos. Las alertas combinan abandono e "
-        "inscripciones sin ingresos."
-    ),
-    PROBABILITY: (
-        "Presenta la menor proporción de estudiantes activos sobre la matrícula. "
-        "Todas las alertas corresponden a abandono o falta de ingresos."
-    ),
-}

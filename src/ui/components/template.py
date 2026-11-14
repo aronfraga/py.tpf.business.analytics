@@ -4,6 +4,12 @@ import plotly.graph_objects as go
 
 PALETTE: List[str] = ["#1F5C6B", "#E0A458", "#8A9BA8", "#4C9AA8", "#B5523B", "#6B8F71"]
 
+GROUP_ORDER: List[str] = ["Promociona", "Regular", "Libre", "No se presentó"]
+
+GROUP_COLORS: Dict[str, str] = {"Promociona": "#6B8F71", "Regular": "#E0A458", "Libre": "#B5523B", "No se presentó": "#8A9BA8"}
+
+TREND_COLOR: str = "#1E2A32"
+
 HEATMAP_SCALE: List[Any] = [[0.0, "#EAF3F5"], [0.5, "#6FAAB6"], [1.0, "#143F4A"]]
 
 TRANSPARENT: str = "rgba(0,0,0,0)"

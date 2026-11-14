@@ -3,10 +3,10 @@ import plotly.graph_objects as go
 import streamlit as st
 from streamlit.delta_generator import DeltaGenerator
 from data.real_common import SUBJECTS
-from data.real_general import ACTIVE_INACTIVE, GENERAL_INTERPRETATION, GENERAL_KPIS, GRADE_DISTRIBUTION, PARTICIPATION_TREND
+from data.real_general import ACTIVE_INACTIVE, GENERAL_KPIS, GRADE_DISTRIBUTION, PARTICIPATION_TREND
 from ui.components.cards import card_row
 from ui.components.charts import grouped_bar_chart, multi_line_chart, show_figure
-from ui.components.texts import interpretation, section_title
+from ui.components.texts import section_title
 
 def show() -> None:
     page_title: str = "General"
@@ -56,6 +56,5 @@ def show() -> None:
     trend_figure: go.Figure = multi_line_chart(PARTICIPATION_TREND, trend_x, trend_y, trend_title, trend_x_title, trend_y_title)
     
     show_figure(trend_figure)
-    interpretation(GENERAL_INTERPRETATION)
 
 show()

@@ -3,9 +3,6 @@ from typing import Dict, List
 import pandas as pd
 
 from data.real_common import (
-    ALGEBRA,
-    ALGORITHMS,
-    PROBABILITY,
     SUBJECT_KEYS,
     SUBJECTS,
     load_enrolled_traceability,
@@ -105,18 +102,3 @@ INTERACTIONS_BY_ACTION: Dict[str, pd.DataFrame] = ALL_TABLES["by_action"]
 ACTIVITY_HEATMAP: Dict[str, pd.DataFrame] = ALL_TABLES["heatmap"]
 
 TIMELINE: Dict[str, pd.DataFrame] = ALL_TABLES["timeline"]
-
-TRACEABILITY_INTERPRETATION: Dict[str, str] = {
-    ALGEBRA: (
-        "La mayor parte de las interacciones corresponde a la consulta de recursos. "
-        "El uso se concentra entre semana por la tarde y baja los fines de semana."
-    ),
-    ALGORITHMS: (
-        "Las entregas de tareas tienen un peso mayor que en las otras asignaturas. "
-        "Hay un uso nocturno sostenido, incluso los domingos."
-    ),
-    PROBABILITY: (
-        "La participación en foros es baja frente a la consulta de recursos. La "
-        "franja de 16 a 20 h concentra la mayor actividad."
-    ),
-}

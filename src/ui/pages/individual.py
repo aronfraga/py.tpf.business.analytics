@@ -4,7 +4,7 @@ import plotly.graph_objects as go
 import streamlit as st
 from streamlit.delta_generator import DeltaGenerator
 from data.real_individual import GRADES_LABELS, STUDENT_DATA, STUDENTS
-from ui.components.charts import bar_chart, line_chart, show_figure
+from ui.components.charts import bar_chart, horizontal_bar_chart, line_chart, show_figure
 from ui.components.filters import selector
 from ui.components.tables import table
 from ui.components.texts import section_title
@@ -20,6 +20,7 @@ def show() -> None:
     data: Dict[str, Any] = STUDENT_DATA[student]
     grades: pd.DataFrame = data["grades"]
     participation: pd.DataFrame = data["participation"]
+    traceability: pd.DataFrame = data["traceability"]
     color: str = data["traffic_light"]
     light_text: str = data["traffic_light_text"]
     section_title(student)
@@ -54,6 +55,16 @@ def show() -> None:
     with participation_column:
         show_figure(participation_figure)
     
+    traceability_section: str = "Trazabilidad"
+    section_title(traceability_section)
+
+    traceability_value_column: str = "count"
+    traceability_category_column: str = "action"
+    traceability_title: str = "Interacciones por tipo de acción"
+    traceability_x_title: str = "Interacciones"
+    traceability_figure: go.Figure = horizontal_bar_chart(traceability, traceability_value_column, traceability_category_column, traceability_title, traceability_x_title)
+    show_figure(traceability_figure)
+
     table_title: str = "Detalle de notas"
     table(grades, table_title, GRADES_LABELS)
 
