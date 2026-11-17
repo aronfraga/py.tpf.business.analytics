@@ -174,7 +174,7 @@ def scatter_with_trend(points: pd.DataFrame, trend: pd.DataFrame, x_column: str,
     points_trace: go.Scatter = go.Scatter(name=points_name, x=points_x, y=points_y, mode=points_mode, marker=points_marker)
     trend_name: str = "Tendencia"
     trend_mode: str = "lines"
-    trend_line: Dict[str, Any] = {"width": 3, "dash": "dash", "color": "#E0A458"}
+    trend_line: Dict[str, Any] = {"width": 3, "dash": "dash", "color": "#D4A017"}
     trend_trace: go.Scatter = go.Scatter(name=trend_name, x=trend_x, y=trend_y, mode=trend_mode, line=trend_line)
     traces: List[go.Scatter] = [points_trace, trend_trace]
     figure: go.Figure = go.Figure(data=traces)
