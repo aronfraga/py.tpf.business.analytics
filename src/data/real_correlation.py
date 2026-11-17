@@ -60,7 +60,7 @@ RISK_LABELS: Dict[str, str] = {
 SCALE_DIVISOR: int = 10
 GRADE_DECIMALS: int = 2
 VALUE_FORMAT: str = ".2f"
-CARD_TITLE: str = "Correlación tiempo–nota"
+CARD_TITLE: str = "Correlación tiempo–nota (Pearson)"
 
 NO_ASSOCIATION_LIMIT: float = 0.1
 WEAK_LIMIT: float = 0.3

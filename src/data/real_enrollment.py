@@ -44,6 +44,7 @@ NOT_ENROLLED_ACTIVE_LABELS: Dict[str, str] = {
 
 ENROLLED_NO_PARTICIPATION_LABELS: Dict[str, str] = {
     "student": "Estudiante",
+    "subject": "Asignatura",
     "enrollment_date": "Fecha de inscripción",
     "last_access": "Último acceso",
 }
@@ -264,7 +265,8 @@ def build_all() -> Dict[str, Dict[str, Any]]:
         not_enrolled_users: List[str] = select_users(cross=cross, flag_column=FLAG_NOT_ENROLLED_ACTIVE, subject_key=subject_key)
         no_participation_users: List[str] = select_users(cross=cross, flag_column=FLAG_ENROLLED_WITHOUT_ACTIVITY, subject_key=subject_key)
         not_enrolled[subject] = build_not_enrolled_table(users=not_enrolled_users, subject_key=subject_key, participation_index=participation_index, sessions=sessions)
-        no_participation[subject] = build_no_participation_table(users=no_participation_users, subject_key=subject_key, participation_index=participation_index, enrollment_dates=enrollment_dates)
+        no_participation_table: pd.DataFrame = build_no_participation_table(users=no_participation_users, subject_key=subject_key, participation_index=participation_index, enrollment_dates=enrollment_dates)
+        no_participation[subject] = no_participation_table.assign(subject=subject)
         alerts[subject] = build_alerts_table(cross=cross, subject_key=subject_key, participation_index=participation_index, sessions=sessions)
         enrolled_count: int = len(enrolled_users)
         enrolled_active_count: int = int(summary_row[ENROLLED_ACTIVE_COLUMN])
