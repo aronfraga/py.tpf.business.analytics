@@ -22,7 +22,7 @@ def show() -> None:
     trend: pd.DataFrame = TREND_LINE[subject]
     card: Dict[str, str] = CORRELATION[subject]
     risk: pd.DataFrame = RISK_STUDENTS[subject]
-    section: str = "Relación entre sesiones y notas"
+    section: str = "Relación entre tiempo en la plataforma y notas"
 
     section_title(section)
 
@@ -32,11 +32,11 @@ def show() -> None:
 
     chart_column, card_column = st.columns(widths)
 
-    x_column: str = "sessions"
+    x_column: str = "time_min"
     y_column: str = "grade"
     group_column: str = "group"
-    chart_title: str = "Notas vs. sesiones"
-    x_title: str = "Sesiones"
+    chart_title: str = "Notas vs. tiempo en la plataforma"
+    x_title: str = "Tiempo en la plataforma (min)"
     y_title: str = "Nota"
 
     figure: go.Figure = scatter_by_group(points, trend, x_column, y_column, group_column, chart_title, x_title, y_title)

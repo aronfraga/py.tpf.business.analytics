@@ -1,12 +1,10 @@
 from typing import Dict, List
 import pandas as pd
-import plotly.graph_objects as go
 import streamlit as st
 from streamlit.delta_generator import DeltaGenerator
 from data.real_common import SUBJECT_OPTIONS
-from data.real_enrollment import ALERT_ACTIVE_WITH_DROP, ALERT_NO_ENTRIES, ALERT_NOT_ENROLLED_ACTIVE, ALERTS,ALERTS_LABELS, ENROLLED_NO_PARTICIPATION, ENROLLED_NO_PARTICIPATION_LABELS, ENROLLED_VS_ACTIVE, ENROLLMENT_KPIS, NOT_ENROLLED_ACTIVE, NOT_ENROLLED_ACTIVE_LABELS
+from data.real_enrollment import ALERT_ACTIVE_WITH_DROP, ALERT_NO_ENTRIES, ALERT_NOT_ENROLLED_ACTIVE, ALERTS,ALERTS_LABELS, ENROLLED_NO_PARTICIPATION, ENROLLED_NO_PARTICIPATION_LABELS, ENROLLMENT_KPIS, NOT_ENROLLED_ACTIVE, NOT_ENROLLED_ACTIVE_LABELS
 from ui.components.cards import card_row
-from ui.components.charts import bar_chart, show_figure
 from ui.components.filters import selector
 from ui.components.tables import table
 from ui.components.texts import section_title
@@ -19,22 +17,10 @@ def show() -> None:
     subject_key: str = "enrollment_subject"
     subject: str = selector(subject_label, SUBJECT_OPTIONS, subject_key)
     cards: List[Dict[str, str]] = ENROLLMENT_KPIS[subject]
-    enrolled_active: pd.DataFrame = ENROLLED_VS_ACTIVE[subject]
     not_enrolled: pd.DataFrame = NOT_ENROLLED_ACTIVE[subject]
     no_participation: pd.DataFrame = ENROLLED_NO_PARTICIPATION[subject]
     alerts: pd.DataFrame = ALERTS[subject]
     card_row(cards)
-    
-    enrolled_section: str = "Matriculados vs. activos"
-    section_title(enrolled_section)
-    
-    status_column: str = "status"
-    count_column: str = "count"
-    chart_title: str = "Matriculados vs. activos"
-    x_title: str = "Estado"
-    y_title: str = "Estudiantes"
-    figure: go.Figure = bar_chart(enrolled_active, status_column, count_column, chart_title, x_title, y_title)
-    show_figure(figure)
     
     detail_section: str = "Detalle"
     section_title(detail_section)

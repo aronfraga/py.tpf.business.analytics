@@ -195,3 +195,42 @@ div[data-testid="stDataFrame"] {
   font-weight: 700;
   margin-top: 0.2rem;
 }
+
+.colored-table-wrap {
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  max-height: 420px;
+  overflow: auto;
+}
+
+.colored-table {
+  border-collapse: separate;
+  border-spacing: 0;
+  width: 100%;
+}
+
+.colored-table th {
+  background: var(--c-primary);
+  color: #FFFFFF;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 0.7rem 1rem;
+  position: sticky;
+  text-align: left;
+  top: 0;
+  text-transform: uppercase;
+}
+
+.colored-table td {
+  border-top: 1px solid var(--c-border);
+  color: var(--c-text);
+  font-size: 0.95rem;
+  padding: 0.65rem 1rem;
+}
+
+.colored-table tbody tr:nth-child(even) td {
+  background: var(--c-background);
+}

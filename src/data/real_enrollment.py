@@ -209,9 +209,10 @@ def select_summary_row(summary: pd.DataFrame, subject_key: str) -> pd.Series:
     return row
 
 def build_cards(enrolled_count: int, enrolled_active: int, not_enrolled_active: int, no_participation: int, alerts_count: int) -> List[Dict[str, str]]:
+    active_percent: str = format(enrolled_active / enrolled_count * 100, ".1f") if enrolled_count > 0 else "0.0"
     cards: List[Dict[str, str]] = [
         {"title": "Matriculados", "value": str(enrolled_count), "detail": "Estudiantes inscriptos"},
-        {"title": "Activos", "value": str(enrolled_active), "detail": "Con actividad registrada"},
+        {"title": "Activos", "value": str(enrolled_active), "detail": f"{active_percent}% de los matriculados"},
         {"title": "No inscriptos activos", "value": str(not_enrolled_active), "detail": "Usuarios sin matrícula"},
         {"title": "Inscriptos sin participación", "value": str(no_participation), "detail": "Nunca ingresaron"},
         {"title": "Alertas", "value": str(alerts_count), "detail": "Estudiantes a revisar"},
@@ -221,11 +222,13 @@ def build_cards(enrolled_count: int, enrolled_active: int, not_enrolled_active: 
 
 def sum_cards(cards: Dict[str, List[Dict[str, str]]]) -> List[Dict[str, str]]:
     per_subject: List[List[Dict[str, str]]] = list(cards.values())
-    result: List[Dict[str, str]] = []
+    totals: List[int] = []
 
-    for position, template in enumerate(per_subject[0]):
+    for position in range(len(per_subject[0])):
         total: int = sum(int(subject_cards[position]["value"]) for subject_cards in per_subject)
-        result.append({"title": template["title"], "value": str(total), "detail": template["detail"]})
+        totals.append(total)
+
+    result: List[Dict[str, str]] = build_cards(enrolled_count=totals[0], enrolled_active=totals[1], not_enrolled_active=totals[2], no_participation=totals[3], alerts_count=totals[4])
 
     return result
 

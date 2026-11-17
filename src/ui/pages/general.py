@@ -14,7 +14,10 @@ def show() -> None:
     st.title(page_title)
     
     days_key: str = "inactivity_days"
-    days: int = int(st.session_state.get(days_key, DEFAULT_INACTIVITY_DAYS))
+    slider_label: str = "Días sin actividad para considerar inactivo a un alumno"
+    min_days: int = 1
+    max_days: int = 90
+    days: int = st.slider(slider_label, min_value=min_days, max_value=max_days, value=DEFAULT_INACTIVITY_DAYS, key=days_key)
 
     for subject in SUBJECTS:
         section_title(subject)
@@ -23,11 +26,6 @@ def show() -> None:
 
     students_section: str = "Estudiantes y notas"
     section_title(students_section)
-
-    slider_label: str = "Días sin actividad para considerar inactivo a un alumno"
-    min_days: int = 1
-    max_days: int = 90
-    st.slider(slider_label, min_value=min_days, max_value=max_days, value=DEFAULT_INACTIVITY_DAYS, key=days_key)
 
     column_count: int = 2
     status_column: DeltaGenerator
