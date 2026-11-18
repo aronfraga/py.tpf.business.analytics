@@ -11,6 +11,7 @@ from data.real_common import (
     load_enrollment_cross,
     load_grades,
     load_participation,
+    sort_by_id_asc,
 )
 from kpis.kpis_calificaciones import condicion_por_estudiante
 from kpis.kpis_cruces import correlacion_participacion_nota, linea_de_tendencia, participacion_vs_notas
@@ -316,7 +317,10 @@ def build_all() -> Dict[str, Dict[str, object]]:
             risks[subject] = build_risk_table(grouped_points=grouped_points, participation_index=participation_index, cutoff=cutoff, subject=subject)
 
     all_risks: pd.DataFrame = pd.concat(list(risks.values()), ignore_index=True)
-    risks[SUBJECT_ALL] = all_risks.sort_values(by=["sessions", "student"]).reset_index(drop=True)
+    risks[SUBJECT_ALL] = all_risks
+
+    for subject_name in list(risks.keys()):
+        risks[subject_name] = sort_by_id_asc(risks[subject_name], "student")
 
     result: Dict[str, Dict[str, object]] = {
         "scatter": scatter,

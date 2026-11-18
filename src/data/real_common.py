@@ -37,6 +37,11 @@ def select_subject(frame: pd.DataFrame, column: str, subject: str) -> pd.DataFra
 
     return result
 
+def sort_by_id_asc(table: pd.DataFrame, id_column: str) -> pd.DataFrame:
+    result: pd.DataFrame = table.sort_values(by=id_column, ascending=True, kind="stable").reset_index(drop=True)
+
+    return result
+
 def sum_tables(tables: List[pd.DataFrame], key_columns: List[str], value_columns: List[str]) -> pd.DataFrame:
     combined: pd.DataFrame = pd.concat(tables, ignore_index=True)
     grouped: pd.DataFrame = combined.groupby(key_columns, sort=False, as_index=False)[value_columns].sum()

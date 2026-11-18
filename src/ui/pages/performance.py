@@ -46,14 +46,14 @@ def show() -> None:
     histogram_column, status_column = st.columns(column_count)
     range_column: str = "range"
     count_column: str = "count"
-    histogram_title: str = "Histograma de notas"
+    histogram_title: str = "Histograma de notas promedio"
     histogram_x_title: str = "Rango de nota"
     histogram_y_title: str = "Estudiantes"
     histogram_figure: go.Figure = histogram(grades, range_column, count_column, histogram_title, histogram_x_title, histogram_y_title)
     status_label_column: str = "status"
-    status_title: str = "Libre / Regular / Promociona"
-    status_colors: Dict[str, str] = {"Promociona": GROUP_COLORS["Promociona"], "Regular": GROUP_COLORS["Regular"], "Libre": GROUP_COLORS["Libre"]}
-    status_figure: go.Figure = donut_chart(status, status_label_column, count_column, status_title, status_colors)
+    status_title: str = "Libre / Regular / Promociona / No se presentó"
+    status_colors: Dict[str, str] = {"Promociona": GROUP_COLORS["Promociona"], "Regular": GROUP_COLORS["Regular"], "Libre": GROUP_COLORS["Libre"], "No se presentó": GROUP_COLORS["No se presentó"]}
+    status_figure: go.Figure = donut_chart(status, status_label_column, count_column, status_title, status_colors, "Total")
     
     with histogram_column:
         show_figure(histogram_figure)

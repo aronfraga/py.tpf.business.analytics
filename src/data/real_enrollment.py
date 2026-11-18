@@ -10,6 +10,7 @@ from data.real_common import (
     load_enrollment_cross,
     load_enrollment_list,
     load_participation,
+    sort_by_id_asc,
     sum_tables,
 )
 from kpis.kpis_matricula import estudiantes_activos, resumen_activos_por_matricula
@@ -32,7 +33,7 @@ FLAG_ENROLLED_WITHOUT_ACTIVITY: str = "inscripto_sin_actividad"
 DATE_FORMAT: str = "%Y-%m-%d"
 NEVER_TEXT: str = "Nunca"
 
-ALERT_ACTIVE_WITH_DROP: str = "Activo con baja"
+ALERT_ACTIVE_WITH_DROP: str = "Matriculados dados de baja"
 ALERT_NO_ENTRIES: str = "Sin ingresos"
 ALERT_NOT_ENROLLED_ACTIVE: str = "No inscripto activo"
 
@@ -212,11 +213,11 @@ def select_summary_row(summary: pd.DataFrame, subject_key: str) -> pd.Series:
 def build_cards(enrolled_count: int, enrolled_active: int, not_enrolled_active: int, no_participation: int, alerts_count: int) -> List[Dict[str, str]]:
     active_percent: str = format(enrolled_active / enrolled_count * 100, ".1f") if enrolled_count > 0 else "0.0"
     cards: List[Dict[str, str]] = [
-        {"title": "Matriculados", "value": str(enrolled_count), "detail": "Estudiantes inscriptos"},
+        {"title": "Matriculados", "value": str(enrolled_count), "detail": "Inscripciones oficiales"},
         {"title": "Activos", "value": str(enrolled_active), "detail": f"{active_percent}% de los matriculados"},
         {"title": "No inscriptos activos", "value": str(not_enrolled_active), "detail": "Usuarios sin matrícula"},
         {"title": "Inscriptos sin participación", "value": str(no_participation), "detail": "Nunca ingresaron"},
-        {"title": "Alertas", "value": str(alerts_count), "detail": "Estudiantes a revisar"},
+        {"title": "Alertas", "value": str(alerts_count), "detail": "Inscripciones a revisar"},
     ]
 
     return cards
@@ -284,6 +285,11 @@ def build_all() -> Dict[str, Dict[str, Any]]:
     not_enrolled[SUBJECT_ALL] = pd.concat(list(not_enrolled.values()), ignore_index=True)
     no_participation[SUBJECT_ALL] = pd.concat(list(no_participation.values()), ignore_index=True)
     alerts[SUBJECT_ALL] = pd.concat(list(alerts.values()), ignore_index=True)
+    for subject_name in list(alerts.keys()):
+        not_enrolled[subject_name] = sort_by_id_asc(not_enrolled[subject_name], "user")
+        no_participation[subject_name] = sort_by_id_asc(no_participation[subject_name], "student")
+        alerts[subject_name] = sort_by_id_asc(alerts[subject_name], "student")
+
     cards[SUBJECT_ALL] = sum_cards(cards=cards)
     enrolled_vs_active[SUBJECT_ALL] = sum_tables(list(enrolled_vs_active.values()), ["status"], ["count"])
 

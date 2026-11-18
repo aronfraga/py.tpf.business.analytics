@@ -2,12 +2,18 @@ from typing import Dict, List
 import pandas as pd
 import streamlit as st
 from streamlit.delta_generator import DeltaGenerator
-from data.real_common import SUBJECT_OPTIONS
+from data.real_common import SUBJECT_ALL, SUBJECT_OPTIONS
 from data.real_enrollment import ALERT_ACTIVE_WITH_DROP, ALERT_NO_ENTRIES, ALERT_NOT_ENROLLED_ACTIVE, ALERTS,ALERTS_LABELS, ENROLLED_NO_PARTICIPATION, ENROLLED_NO_PARTICIPATION_LABELS, ENROLLMENT_KPIS, NOT_ENROLLED_ACTIVE, NOT_ENROLLED_ACTIVE_LABELS
 from ui.components.cards import card_row
 from ui.components.filters import selector
 from ui.components.tables import table
 from ui.components.texts import section_title
+
+ALERT_DETAILS: Dict[str, str] = {
+    ALERT_ACTIVE_WITH_DROP: "Inscripciones",
+    ALERT_NO_ENTRIES: "Inscripciones",
+    ALERT_NOT_ENROLLED_ACTIVE: "Usuarios por asignatura",
+}
 
 def show() -> None:
     page_title: str = "Matrícula y Alertas"
@@ -21,7 +27,11 @@ def show() -> None:
     no_participation: pd.DataFrame = ENROLLED_NO_PARTICIPATION[subject]
     alerts: pd.DataFrame = ALERTS[subject]
     card_row(cards)
-    
+
+    if subject == SUBJECT_ALL:
+        all_note: str = "En \"Todas las asignaturas\" las cifras cuentan inscripciones: un alumno inscripto en varias asignaturas se cuenta una vez por cada una."
+        st.caption(all_note)
+
     detail_section: str = "Detalle"
     section_title(detail_section)
     
@@ -45,9 +55,9 @@ def show() -> None:
 
     for alert_type in alert_types:
         type_count: int = int((alerts["alert"] == alert_type).sum())
-        alert_cards.append({"title": alert_type, "value": str(type_count), "detail": "Estudiantes"})
+        alert_cards.append({"title": alert_type, "value": str(type_count), "detail": ALERT_DETAILS[alert_type]})
 
-    total_card: Dict[str, str] = {"title": "Total de alertas", "value": str(len(alerts)), "detail": "Suma de todas las alertas"}
+    total_card: Dict[str, str] = {"title": "Total de alertas", "value": str(len(alerts)), "detail": "Suma de las alertas (inscripciones)"}
     alert_cards.append(total_card)
     card_row(alert_cards)
 

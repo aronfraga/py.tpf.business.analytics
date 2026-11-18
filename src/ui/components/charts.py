@@ -127,7 +127,7 @@ def multi_line_chart(series: Dict[str, pd.DataFrame], x_column: str, y_column: s
     result: go.Figure = apply_template(figure, title, x_title, y_title)
     return result
 
-def donut_chart(table: pd.DataFrame, label_column: str, value_column: str, title: str, colors: Optional[Dict[str, str]] = None) -> go.Figure:
+def donut_chart(table: pd.DataFrame, label_column: str, value_column: str, title: str, colors: Optional[Dict[str, str]] = None, center_label: Optional[str] = None) -> go.Figure:
     labels: List[Any] = table[label_column].tolist()
     values: List[Any] = table[value_column].tolist()
     hole: float = 0.55
@@ -142,7 +142,12 @@ def donut_chart(table: pd.DataFrame, label_column: str, value_column: str, title
     figure: go.Figure = go.Figure(data=traces)
     figure.layout.template = TEMPLATE
     figure.update_layout(title_text=title)
-    
+
+    if center_label is not None:
+        total: int = int(sum(values))
+        center_text: str = f"<b style='font-size:30px'>{total}</b><br>{center_label}"
+        figure.add_annotation(text=center_text, x=0.5, y=0.5, showarrow=False, font={"size": 14, "color": "#1E2A32"})
+
     return figure
 
 def heatmap(table: pd.DataFrame, title: str, x_title: str, y_title: str) -> go.Figure:
