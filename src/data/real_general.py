@@ -1,3 +1,4 @@
+from functools import lru_cache
 from typing import Dict, List
 
 import pandas as pd
@@ -11,7 +12,7 @@ from data.real_common import (
     load_participation,
 )
 from kpis.kpis_calificaciones import distribucion_de_notas, promedio_general_por_asignatura
-from kpis.kpis_participacion import estudiantes_activos_vs_inactivos, sesiones_promedio_por_estudiante
+from kpis.kpis_participacion import DIAS_ACTIVIDAD, estudiantes_activos_vs_inactivos, sesiones_promedio_por_estudiante
 from kpis.kpis_trazabilidad import frecuencia_ingreso
 
 SUBJECT_COLUMN: str = "materia"
@@ -169,6 +170,12 @@ def build_all() -> Dict[str, Dict[str, object]]:
         "active_inactive": active_inactive,
         "distribution": distributions,
         "trend": trends,
+        "context": {
+            "enrolled_participation": enrolled_participation,
+            "enrollment_cross": enrollment_cross,
+            "grades_table": grades_table,
+            "sessions_table": sessions_table,
+        },
     }
 
     return result
@@ -183,9 +190,28 @@ GRADE_DISTRIBUTION: Dict[str, pd.DataFrame] = ALL_TABLES["distribution"]
 
 PARTICIPATION_TREND: Dict[str, pd.DataFrame] = ALL_TABLES["trend"]
 
-GENERAL_INTERPRETATION: str = (
-    "Las tres asignaturas muestran una participación creciente a lo largo del "
-    "período. Algoritmos y Estructuras de Datos concentra la mayor matrícula y el "
-    "mayor promedio de sesiones, mientras que Probabilidad y Estadística presenta "
-    "la proporción más alta de estudiantes inactivos."
-)
+CONTEXT: Dict[str, object] = ALL_TABLES["context"]
+
+DEFAULT_INACTIVITY_DAYS: int = DIAS_ACTIVIDAD
+
+@lru_cache(maxsize=None)
+def active_table_for_days(days: int) -> pd.DataFrame:
+    enrolled_participation: pd.DataFrame = CONTEXT["enrolled_participation"]
+    enrollment_cross: pd.DataFrame = CONTEXT["enrollment_cross"]
+    result: pd.DataFrame = estudiantes_activos_vs_inactivos(participacion=enrolled_participation, cruce=enrollment_cross, dias=days)
+
+    return result
+
+def general_cards_for_days(subject: str, days: int) -> List[Dict[str, str]]:
+    active_table: pd.DataFrame = active_table_for_days(days)
+    grades_table: pd.DataFrame = CONTEXT["grades_table"]
+    sessions_table: pd.DataFrame = CONTEXT["sessions_table"]
+    result: List[Dict[str, str]] = build_cards(subject=subject, active_table=active_table, grades_table=grades_table, sessions_table=sessions_table)
+
+    return result
+
+def active_inactive_for_days(subject: str, days: int) -> pd.DataFrame:
+    active_table: pd.DataFrame = active_table_for_days(days)
+    result: pd.DataFrame = build_active_inactive(active_table=active_table, subject=subject)
+
+    return result

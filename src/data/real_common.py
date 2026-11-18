@@ -16,11 +16,37 @@ ALGEBRA_KEY: str = "algebra"
 ALGORITHMS_KEY: str = "algoritmos"
 PROBABILITY_KEY: str = "probabilidad"
 
+SUBJECT_ALL: str = "Todas las asignaturas"
+ALL_KEY: str = "todas"
+
+SUBJECT_OPTIONS: List[str] = [SUBJECT_ALL] + SUBJECTS
+
 SUBJECT_KEYS: Dict[str, str] = {
     ALGEBRA: ALGEBRA_KEY,
     ALGORITHMS: ALGORITHMS_KEY,
     PROBABILITY: PROBABILITY_KEY,
+    SUBJECT_ALL: ALL_KEY,
 }
+
+def select_subject(frame: pd.DataFrame, column: str, subject: str) -> pd.DataFrame:
+    if subject == SUBJECT_ALL:
+        return frame
+
+    is_subject: pd.Series = frame[column] == SUBJECT_KEYS[subject]
+    result: pd.DataFrame = frame.loc[is_subject]
+
+    return result
+
+def sort_by_id_asc(table: pd.DataFrame, id_column: str) -> pd.DataFrame:
+    result: pd.DataFrame = table.sort_values(by=id_column, ascending=True, kind="stable").reset_index(drop=True)
+
+    return result
+
+def sum_tables(tables: List[pd.DataFrame], key_columns: List[str], value_columns: List[str]) -> pd.DataFrame:
+    combined: pd.DataFrame = pd.concat(tables, ignore_index=True)
+    grouped: pd.DataFrame = combined.groupby(key_columns, sort=False, as_index=False)[value_columns].sum()
+
+    return grouped
 
 KEY_SUBJECTS: Dict[str, str] = {
     ALGEBRA_KEY: ALGEBRA,

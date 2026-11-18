@@ -1,14 +1,14 @@
+from functools import reduce
 from typing import Dict, List
 
 import pandas as pd
 
 from data.real_common import (
-    ALGEBRA,
-    ALGORITHMS,
-    PROBABILITY,
+    SUBJECT_ALL,
     SUBJECT_KEYS,
     SUBJECTS,
     load_enrolled_traceability,
+    sum_tables,
 )
 from kpis.kpis_trazabilidad import (
     actividad_por_dia_y_franja,
@@ -76,6 +76,23 @@ def build_timeline(daily: pd.DataFrame, subject: str) -> pd.DataFrame:
 
     return result
 
+def build_all_by_action(by_action: Dict[str, pd.DataFrame]) -> pd.DataFrame:
+    summed: pd.DataFrame = sum_tables(list(by_action.values()), [ACTION_COLUMN], [COUNT_COLUMN])
+    result: pd.DataFrame = summed.sort_values(COUNT_COLUMN, ascending=False).reset_index(drop=True)
+
+    return result
+
+def build_all_heatmap(heatmaps: Dict[str, pd.DataFrame]) -> pd.DataFrame:
+    result: pd.DataFrame = reduce(lambda left, right: left.add(right, fill_value=0), heatmaps.values()).astype(int)
+
+    return result
+
+def build_all_timeline(timelines: Dict[str, pd.DataFrame]) -> pd.DataFrame:
+    summed: pd.DataFrame = sum_tables(list(timelines.values()), [DATE_COLUMN], [TIMELINE_COLUMN])
+    result: pd.DataFrame = summed.sort_values(DATE_COLUMN).reset_index(drop=True)
+
+    return result
+
 def build_all() -> Dict[str, Dict[str, pd.DataFrame]]:
     traceability: pd.DataFrame = load_enrolled_traceability()
     by_type: pd.DataFrame = interacciones_por_tipo(df=traceability)
@@ -89,6 +106,10 @@ def build_all() -> Dict[str, Dict[str, pd.DataFrame]]:
         by_action[subject] = build_interactions_by_action(by_type=by_type, subject=subject)
         heatmaps[subject] = build_heatmap(activity=activity, subject=subject)
         timelines[subject] = build_timeline(daily=daily, subject=subject)
+
+    by_action[SUBJECT_ALL] = build_all_by_action(by_action=by_action)
+    heatmaps[SUBJECT_ALL] = build_all_heatmap(heatmaps=heatmaps)
+    timelines[SUBJECT_ALL] = build_all_timeline(timelines=timelines)
 
     result: Dict[str, Dict[str, pd.DataFrame]] = {
         "by_action": by_action,
@@ -105,18 +126,3 @@ INTERACTIONS_BY_ACTION: Dict[str, pd.DataFrame] = ALL_TABLES["by_action"]
 ACTIVITY_HEATMAP: Dict[str, pd.DataFrame] = ALL_TABLES["heatmap"]
 
 TIMELINE: Dict[str, pd.DataFrame] = ALL_TABLES["timeline"]
-
-TRACEABILITY_INTERPRETATION: Dict[str, str] = {
-    ALGEBRA: (
-        "La mayor parte de las interacciones corresponde a la consulta de recursos. "
-        "El uso se concentra entre semana por la tarde y baja los fines de semana."
-    ),
-    ALGORITHMS: (
-        "Las entregas de tareas tienen un peso mayor que en las otras asignaturas. "
-        "Hay un uso nocturno sostenido, incluso los domingos."
-    ),
-    PROBABILITY: (
-        "La participación en foros es baja frente a la consulta de recursos. La "
-        "franja de 16 a 20 h concentra la mayor actividad."
-    ),
-}

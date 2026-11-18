@@ -3,13 +3,13 @@ from typing import Dict, List
 import pandas as pd
 
 from data.real_common import (
-    ALGEBRA,
-    ALGORITHMS,
-    PROBABILITY,
+    SUBJECT_ALL,
     SUBJECT_KEYS,
+    SUBJECT_OPTIONS,
     SUBJECTS,
     load_enrollment_cross,
     load_grades,
+    select_subject,
 )
 from kpis.kpis_calificaciones import condicion_academica, distribucion_de_notas
 
@@ -32,6 +32,7 @@ HISTOGRAM_SOURCE_TO_COLUMN: str = "hasta"
 HISTOGRAM_SOURCE_COUNT_COLUMN: str = "estudiantes"
 CONDITION_COLUMN: str = "condicion"
 CONDITION_COUNT_COLUMN: str = "estudiantes"
+SUBJECT_NAME_COLUMN: str = "subject"
 
 PERCENT_FACTOR: float = 100.0
 SCALE_DIVISOR: int = 10
@@ -46,17 +47,17 @@ STATUS_LABELS: Dict[str, str] = {
 
 STATUS_ORDER: List[str] = ["libre", "regular", "promocionado"]
 
+NOT_PRESENTED_LABEL: str = "No se presentó"
+
 def build_instrument_table(grades: pd.DataFrame, enrollment_cross: pd.DataFrame, subject: str) -> pd.DataFrame:
-    subject_key: str = SUBJECT_KEYS[subject]
     pair_columns: list = [SUBJECT_COLUMN, USER_COLUMN]
     is_enrolled: pd.Series = enrollment_cross[ENROLLED_COLUMN]
     enrolled_rows: pd.DataFrame = enrollment_cross.loc[is_enrolled]
     enrolled_pairs: pd.DataFrame = enrolled_rows[pair_columns]
     joined: pd.DataFrame = grades.merge(enrolled_pairs, on=pair_columns, how="inner")
     has_maximum: pd.Series = joined[MAXIMUM_COLUMN] > 0
-    is_subject: pd.Series = joined[SUBJECT_COLUMN] == subject_key
-    mask: pd.Series = has_maximum & is_subject
-    selected: pd.DataFrame = joined.loc[mask].copy()
+    with_maximum: pd.DataFrame = joined.loc[has_maximum]
+    selected: pd.DataFrame = select_subject(with_maximum, SUBJECT_COLUMN, subject).copy()
     ratio: pd.Series = selected[OBTAINED_COLUMN] / selected[MAXIMUM_COLUMN]
     selected[PERCENT_COLUMN] = ratio * PERCENT_FACTOR
     grouped: pd.core.groupby.DataFrameGroupBy = selected.groupby(INSTRUMENT_SOURCE_COLUMN)
@@ -83,10 +84,10 @@ def build_range_label(row_from: int, row_to: int) -> str:
     return label
 
 def build_histogram_table(distribution: pd.DataFrame, subject: str) -> pd.DataFrame:
-    subject_key: str = SUBJECT_KEYS[subject]
-    is_subject: pd.Series = distribution[SUBJECT_COLUMN] == subject_key
-    selected: pd.DataFrame = distribution.loc[is_subject]
-    sorted_rows: pd.DataFrame = selected.sort_values(HISTOGRAM_SOURCE_FROM_COLUMN)
+    selected: pd.DataFrame = select_subject(distribution, SUBJECT_COLUMN, subject)
+    range_columns: list = [HISTOGRAM_SOURCE_FROM_COLUMN, HISTOGRAM_SOURCE_TO_COLUMN]
+    grouped_rows: pd.DataFrame = selected.groupby(range_columns, as_index=False)[HISTOGRAM_SOURCE_COUNT_COLUMN].sum()
+    sorted_rows: pd.DataFrame = grouped_rows.sort_values(HISTOGRAM_SOURCE_FROM_COLUMN)
     labels: List[str] = []
 
     for row in sorted_rows.itertuples(index=False):
@@ -104,10 +105,8 @@ def build_histogram_table(distribution: pd.DataFrame, subject: str) -> pd.DataFr
 
     return result
 
-def build_status_table(conditions: pd.DataFrame, subject: str) -> pd.DataFrame:
-    subject_key: str = SUBJECT_KEYS[subject]
-    is_subject: pd.Series = conditions[SUBJECT_COLUMN] == subject_key
-    selected: pd.DataFrame = conditions.loc[is_subject]
+def build_status_table(conditions: pd.DataFrame, subject: str, enrolled_count: int) -> pd.DataFrame:
+    selected: pd.DataFrame = select_subject(conditions, SUBJECT_COLUMN, subject)
     labels: List[str] = []
     counts: List[int] = []
 
@@ -118,6 +117,10 @@ def build_status_table(conditions: pd.DataFrame, subject: str) -> pd.DataFrame:
         label: str = STATUS_LABELS[condition]
         labels.append(label)
         counts.append(condition_count)
+
+    not_presented_count: int = enrolled_count - sum(counts)
+    labels.append(NOT_PRESENTED_LABEL)
+    counts.append(not_presented_count)
 
     table_data: Dict[str, list] = {
         STATUS_COLUMN: labels,
@@ -141,14 +144,24 @@ def build_all() -> Dict[str, Dict[str, pd.DataFrame]]:
         cruce=enrollment_cross,
         matriculados=True,
     )
+    enrolled_rows: pd.DataFrame = enrollment_cross.loc[enrollment_cross[ENROLLED_COLUMN]]
+    enrolled_by_subject: pd.Series = enrolled_rows.groupby(SUBJECT_COLUMN).size()
     instruments: Dict[str, pd.DataFrame] = {}
     histograms: Dict[str, pd.DataFrame] = {}
     statuses: Dict[str, pd.DataFrame] = {}
 
-    for subject in SUBJECTS:
+    for subject in SUBJECT_OPTIONS:
         instruments[subject] = build_instrument_table(grades=grades, enrollment_cross=enrollment_cross, subject=subject)
         histograms[subject] = build_histogram_table(distribution=distribution, subject=subject)
-        statuses[subject] = build_status_table(conditions=conditions, subject=subject)
+        subject_enrolled: int = int(enrolled_by_subject.sum()) if subject == SUBJECT_ALL else int(enrolled_by_subject[SUBJECT_KEYS[subject]])
+        statuses[subject] = build_status_table(conditions=conditions, subject=subject, enrolled_count=subject_enrolled)
+
+    by_subject_tables: List[pd.DataFrame] = []
+
+    for subject in SUBJECTS:
+        by_subject_tables.append(instruments[subject].assign(**{SUBJECT_NAME_COLUMN: subject}))
+
+    instruments[SUBJECT_ALL] = pd.concat(by_subject_tables, ignore_index=True)
 
     result: Dict[str, Dict[str, pd.DataFrame]] = {
         "instruments": instruments,
@@ -165,18 +178,3 @@ INSTRUMENT_COMPARISON: Dict[str, pd.DataFrame] = ALL_TABLES["instruments"]
 GRADE_HISTOGRAM: Dict[str, pd.DataFrame] = ALL_TABLES["histogram"]
 
 COURSE_STATUS: Dict[str, pd.DataFrame] = ALL_TABLES["status"]
-
-PERFORMANCE_INTERPRETATION: Dict[str, str] = {
-    ALGEBRA: (
-        "Los trabajos prácticos obtienen mejores promedios que los parciales. El "
-        "recuperatorio muestra el promedio más bajo."
-    ),
-    ALGORITHMS: (
-        "El TP Integrador alcanza el promedio más alto. La distribución de notas se "
-        "concentra entre 6 y 8."
-    ),
-    PROBABILITY: (
-        "Los cuestionarios superan a los parciales en promedio. Un tercio de los "
-        "estudiantes activos queda en condición Libre."
-    ),
-}

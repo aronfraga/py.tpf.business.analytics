@@ -3,15 +3,15 @@ from typing import Any, Dict, List, Tuple
 import pandas as pd
 
 from data.real_common import (
-    ALGEBRA,
-    ALGORITHMS,
-    PROBABILITY,
+    SUBJECT_ALL,
     SUBJECT_KEYS,
     SUBJECTS,
     load_all_traceability,
     load_enrollment_cross,
     load_enrollment_list,
     load_participation,
+    sort_by_id_asc,
+    sum_tables,
 )
 from kpis.kpis_matricula import estudiantes_activos, resumen_activos_por_matricula
 
@@ -33,7 +33,7 @@ FLAG_ENROLLED_WITHOUT_ACTIVITY: str = "inscripto_sin_actividad"
 DATE_FORMAT: str = "%Y-%m-%d"
 NEVER_TEXT: str = "Nunca"
 
-ALERT_ACTIVE_WITH_DROP: str = "Activo con baja"
+ALERT_ACTIVE_WITH_DROP: str = "Matriculados dados de baja"
 ALERT_NO_ENTRIES: str = "Sin ingresos"
 ALERT_NOT_ENROLLED_ACTIVE: str = "No inscripto activo"
 
@@ -45,6 +45,7 @@ NOT_ENROLLED_ACTIVE_LABELS: Dict[str, str] = {
 
 ENROLLED_NO_PARTICIPATION_LABELS: Dict[str, str] = {
     "student": "Estudiante",
+    "subject": "Asignatura",
     "enrollment_date": "Fecha de inscripción",
     "last_access": "Último acceso",
 }
@@ -210,15 +211,28 @@ def select_summary_row(summary: pd.DataFrame, subject_key: str) -> pd.Series:
     return row
 
 def build_cards(enrolled_count: int, enrolled_active: int, not_enrolled_active: int, no_participation: int, alerts_count: int) -> List[Dict[str, str]]:
+    active_percent: str = format(enrolled_active / enrolled_count * 100, ".1f") if enrolled_count > 0 else "0.0"
     cards: List[Dict[str, str]] = [
-        {"title": "Matriculados", "value": str(enrolled_count), "detail": "Estudiantes inscriptos"},
-        {"title": "Activos", "value": str(enrolled_active), "detail": "Con actividad registrada"},
+        {"title": "Matriculados", "value": str(enrolled_count), "detail": "Inscripciones oficiales"},
+        {"title": "Activos", "value": str(enrolled_active), "detail": f"{active_percent}% de los matriculados"},
         {"title": "No inscriptos activos", "value": str(not_enrolled_active), "detail": "Usuarios sin matrícula"},
         {"title": "Inscriptos sin participación", "value": str(no_participation), "detail": "Nunca ingresaron"},
-        {"title": "Alertas", "value": str(alerts_count), "detail": "Estudiantes a revisar"},
+        {"title": "Alertas", "value": str(alerts_count), "detail": "Inscripciones a revisar"},
     ]
 
     return cards
+
+def sum_cards(cards: Dict[str, List[Dict[str, str]]]) -> List[Dict[str, str]]:
+    per_subject: List[List[Dict[str, str]]] = list(cards.values())
+    totals: List[int] = []
+
+    for position in range(len(per_subject[0])):
+        total: int = sum(int(subject_cards[position]["value"]) for subject_cards in per_subject)
+        totals.append(total)
+
+    result: List[Dict[str, str]] = build_cards(enrolled_count=totals[0], enrolled_active=totals[1], not_enrolled_active=totals[2], no_participation=totals[3], alerts_count=totals[4])
+
+    return result
 
 def build_enrolled_vs_active(enrolled_count: int, enrolled_active: int) -> pd.DataFrame:
     table_data: Dict[str, list] = {
@@ -252,7 +266,8 @@ def build_all() -> Dict[str, Dict[str, Any]]:
         not_enrolled_users: List[str] = select_users(cross=cross, flag_column=FLAG_NOT_ENROLLED_ACTIVE, subject_key=subject_key)
         no_participation_users: List[str] = select_users(cross=cross, flag_column=FLAG_ENROLLED_WITHOUT_ACTIVITY, subject_key=subject_key)
         not_enrolled[subject] = build_not_enrolled_table(users=not_enrolled_users, subject_key=subject_key, participation_index=participation_index, sessions=sessions)
-        no_participation[subject] = build_no_participation_table(users=no_participation_users, subject_key=subject_key, participation_index=participation_index, enrollment_dates=enrollment_dates)
+        no_participation_table: pd.DataFrame = build_no_participation_table(users=no_participation_users, subject_key=subject_key, participation_index=participation_index, enrollment_dates=enrollment_dates)
+        no_participation[subject] = no_participation_table.assign(subject=subject)
         alerts[subject] = build_alerts_table(cross=cross, subject_key=subject_key, participation_index=participation_index, sessions=sessions)
         enrolled_count: int = len(enrolled_users)
         enrolled_active_count: int = int(summary_row[ENROLLED_ACTIVE_COLUMN])
@@ -266,6 +281,17 @@ def build_all() -> Dict[str, Dict[str, Any]]:
             alerts_count=alerts_count,
         )
         enrolled_vs_active[subject] = build_enrolled_vs_active(enrolled_count=enrolled_count, enrolled_active=enrolled_active_count)
+
+    not_enrolled[SUBJECT_ALL] = pd.concat(list(not_enrolled.values()), ignore_index=True)
+    no_participation[SUBJECT_ALL] = pd.concat(list(no_participation.values()), ignore_index=True)
+    alerts[SUBJECT_ALL] = pd.concat(list(alerts.values()), ignore_index=True)
+    for subject_name in list(alerts.keys()):
+        not_enrolled[subject_name] = sort_by_id_asc(not_enrolled[subject_name], "user")
+        no_participation[subject_name] = sort_by_id_asc(no_participation[subject_name], "student")
+        alerts[subject_name] = sort_by_id_asc(alerts[subject_name], "student")
+
+    cards[SUBJECT_ALL] = sum_cards(cards=cards)
+    enrolled_vs_active[SUBJECT_ALL] = sum_tables(list(enrolled_vs_active.values()), ["status"], ["count"])
 
     result: Dict[str, Dict[str, Any]] = {
         "cards": cards,
@@ -288,19 +314,3 @@ NOT_ENROLLED_ACTIVE: Dict[str, pd.DataFrame] = ALL_TABLES["not_enrolled"]
 ENROLLED_NO_PARTICIPATION: Dict[str, pd.DataFrame] = ALL_TABLES["no_participation"]
 
 ALERTS: Dict[str, pd.DataFrame] = ALL_TABLES["alerts"]
-
-ENROLLMENT_INTERPRETATION: Dict[str, str] = {
-    ALGEBRA: (
-        "Ocho de cada diez matriculados están activos. Hay usuarios con actividad que "
-        "no figuran en la matrícula y estudiantes inscriptos que nunca ingresaron."
-    ),
-    ALGORITHMS: (
-        "Es la asignatura con más matriculados y la mayor cantidad de estudiantes "
-        "inactivos en términos absolutos. Las alertas combinan abandono e "
-        "inscripciones sin ingresos."
-    ),
-    PROBABILITY: (
-        "Presenta la menor proporción de estudiantes activos sobre la matrícula. "
-        "Todas las alertas corresponden a abandono o falta de ingresos."
-    ),
-}
