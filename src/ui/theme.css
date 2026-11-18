@@ -1,82 +1,224 @@
+@import url("https://fonts.googleapis.com/css2?family=Mountains+of+Christmas:wght@700&display=swap");
+
+/* ------------------------------------------------------------------
+   Paleta navideña
+   ------------------------------------------------------------------ */
 :root {
-  --c-primary: #1F5C6B;
-  --c-primary-light: #4C9AA8;
-  --c-accent: #E0A458;
-  --c-text: #1E2A32;
-  --c-text-soft: #5B6B75;
-  --c-background: #F4F6F8;
+  --c-primary: #1E5631;
+  --c-primary-dark: #0F3B21;
+  --c-primary-light: #3E7B4F;
+  --c-accent: #C8102E;
+  --c-gold: #D4A017;
+  --c-text: #1F2A24;
+  --c-text-soft: #55635A;
+  --c-background: #FBF6EE;
   --c-surface: #FFFFFF;
-  --c-border: #E3E8EC;
-  --c-green: #4E9A6B;
-  --c-yellow: #E3B341;
-  --c-red: #C0504A;
+  --c-border: #EADFCF;
+  --c-green: #24764A;
+  --c-yellow: #D9A81C;
+  --c-red: #C8102E;
   --radius: 16px;
-  --shadow: 0 2px 12px rgba(30, 42, 50, 0.08);
+  --shadow: 0 3px 14px rgba(30, 86, 49, 0.10);
+  --candy-cane: repeating-linear-gradient(-45deg, #C8102E 0 8px, #FFFFFF 8px 16px);
 }
 
+/* ------------------------------------------------------------------
+   Fondo, nieve y guirnalda
+   ------------------------------------------------------------------ */
 .stApp {
-  background: var(--c-background);
+  background-color: var(--c-background);
+  background-image:
+    radial-gradient(rgba(30, 86, 49, 0.045) 1.3px, transparent 1.5px),
+    radial-gradient(rgba(200, 16, 46, 0.035) 1.3px, transparent 1.5px);
+  background-position: 0 0, 14px 14px;
+  background-size: 28px 28px;
   color: var(--c-text);
   font-family: "Inter", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
 }
 
+/* Copos de nieve cayendo (decorativo, no bloquea clics) */
+.stApp::before {
+  animation: snowfall 30s linear infinite;
+  background-image:
+    radial-gradient(4px 4px at 20px 30px, rgba(170, 195, 215, 0.85), transparent 60%),
+    radial-gradient(3px 3px at 90px 120px, rgba(170, 195, 215, 0.75), transparent 60%),
+    radial-gradient(5px 5px at 160px 60px, rgba(170, 195, 215, 0.70), transparent 60%),
+    radial-gradient(3px 3px at 230px 180px, rgba(170, 195, 215, 0.80), transparent 60%),
+    radial-gradient(4px 4px at 300px 90px, rgba(170, 195, 215, 0.65), transparent 60%),
+    radial-gradient(2px 2px at 360px 220px, rgba(170, 195, 215, 0.80), transparent 60%);
+  background-size: 400px 260px;
+  content: "";
+  inset: 0;
+  pointer-events: none;
+  position: fixed;
+  z-index: 0;
+}
+
+[data-testid="stAppViewContainer"] {
+  background: transparent;
+  position: relative;
+  z-index: 1;
+}
+
+@keyframes snowfall {
+  from { background-position: 0 0; }
+  to { background-position: 60px 780px; }
+}
+
+/* Guirnalda de luces en la parte superior */
 .stApp [data-testid="stHeader"] {
   background: transparent;
 }
 
+.stApp [data-testid="stHeader"]::after {
+  animation: twinkle 2.4s ease-in-out infinite alternate;
+  background-image:
+    linear-gradient(#2F3A33, #2F3A33),
+    radial-gradient(circle at 12px 11px, #C8102E 5px, transparent 6px),
+    radial-gradient(circle at 36px 11px, #D4A017 5px, transparent 6px),
+    radial-gradient(circle at 60px 11px, #24764A 5px, transparent 6px),
+    radial-gradient(circle at 84px 11px, #2F80ED 5px, transparent 6px);
+  background-position: 0 4px, 0 0, 0 0, 0 0, 0 0;
+  background-repeat: repeat-x;
+  background-size: 100% 2px, 96px 18px, 96px 18px, 96px 18px, 96px 18px;
+  content: "";
+  height: 18px;
+  left: 0;
+  pointer-events: none;
+  position: absolute;
+  right: 0;
+  top: 0;
+}
+
+@keyframes twinkle {
+  from { filter: brightness(0.85) drop-shadow(0 0 2px rgba(255, 215, 0, 0.3)); }
+  to { filter: brightness(1.25) drop-shadow(0 0 6px rgba(255, 215, 0, 0.8)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stApp::before,
+  .stApp [data-testid="stHeader"]::after {
+    animation: none;
+  }
+}
+
 .block-container {
   max-width: 1280px;
-  padding-top: 2.4rem;
+  padding-top: 2.6rem;
   padding-bottom: 3rem;
 }
 
+/* ------------------------------------------------------------------
+   Barra lateral: verde pino con detalles dorados
+   ------------------------------------------------------------------ */
 [data-testid="stSidebar"] {
-  background: var(--c-surface);
-  border-right: 1px solid var(--c-border);
+  background: linear-gradient(180deg, var(--c-primary) 0%, var(--c-primary-dark) 100%);
+  border-right: 4px solid var(--c-gold);
 }
 
 [data-testid="stSidebar"] a,
-[data-testid="stSidebar"] span {
-  color: var(--c-text);
+[data-testid="stSidebar"] span,
+[data-testid="stSidebar"] p {
+  color: #FFFFFF;
 }
 
+[data-testid="stSidebar"] a:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+[data-testid="stSidebar"] a[aria-current="page"] {
+  background: rgba(212, 160, 23, 0.28);
+  box-shadow: inset 3px 0 0 var(--c-gold);
+}
+
+[data-testid="stSidebar"]::after {
+  bottom: 18px;
+  content: "🎄 ⛄ 🎁 🦌 🔔";
+  font-size: 1.4rem;
+  left: 0;
+  letter-spacing: 0.35rem;
+  pointer-events: none;
+  position: absolute;
+  right: 0;
+  text-align: center;
+}
+
+/* ------------------------------------------------------------------
+   Títulos
+   ------------------------------------------------------------------ */
 .stApp h1 {
-  color: var(--c-primary);
-  font-size: 2rem;
+  color: var(--c-accent);
+  font-family: "Mountains of Christmas", "Inter", "Segoe UI", cursive;
+  font-size: 2.6rem;
   font-weight: 700;
-  letter-spacing: -0.02em;
+  letter-spacing: 0.01em;
   margin-bottom: 0.4rem;
+  text-shadow: 1px 2px 0 rgba(212, 160, 23, 0.30);
+}
+
+.stApp h1::before {
+  content: "🎄 ";
+}
+
+.stApp h1::after {
+  content: " ✨";
 }
 
 .stApp label,
 .stApp [data-testid="stWidgetLabel"] p {
-  color: var(--c-text-soft);
+  color: var(--c-primary);
   font-size: 0.85rem;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .section-title {
-  color: var(--c-text);
-  font-size: 1.05rem;
+  border-left: 5px solid var(--c-accent);
+  color: var(--c-primary);
+  font-size: 1.1rem;
   font-weight: 700;
   margin: 1.6rem 0 0.7rem 0;
   padding-left: 0.7rem;
-  border-left: 4px solid var(--c-accent);
 }
 
+.section-title::before {
+  color: var(--c-gold);
+  content: "❄ ";
+}
+
+/* ------------------------------------------------------------------
+   Tarjetas KPI con borde de bastón de caramelo
+   ------------------------------------------------------------------ */
 .kpi-card {
-  background: var(--c-surface);
+  background: linear-gradient(180deg, #FFFFFF 0%, #FFFDF8 100%);
   border: 1px solid var(--c-border);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
-  padding: 1rem 1.1rem;
   min-height: 140px;
+  overflow: hidden;
+  padding: 1.25rem 1.1rem 1rem 1.1rem;
+  position: relative;
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.kpi-card:hover {
+  box-shadow: 0 8px 22px rgba(30, 86, 49, 0.16);
+  transform: translateY(-2px);
+}
+
+.kpi-card::before {
+  background: var(--candy-cane);
+  content: "";
+  height: 5px;
+  left: 0;
+  position: absolute;
+  right: 0;
+  top: 0;
 }
 
 .kpi-title {
   color: var(--c-text-soft);
   font-size: 0.78rem;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
@@ -84,23 +226,29 @@
 .kpi-value {
   color: var(--c-primary);
   font-size: 2rem;
-  font-weight: 700;
+  font-weight: 800;
   line-height: 1.2;
   margin: 0.25rem 0;
 }
 
 .kpi-detail {
   color: var(--c-text-soft);
-  font-size: 0.82rem;
+  font-size: 1rem;
+  font-weight: 700;
 }
 
+/* ------------------------------------------------------------------
+   Gráficos
+   ------------------------------------------------------------------ */
 div[data-testid="stPlotlyChart"] {
   background: var(--c-surface);
   border: 1px solid var(--c-border);
   border-radius: var(--radius);
+  border-top: 3px solid var(--c-gold);
   box-shadow: var(--shadow);
-  padding: 0;
   overflow: hidden;
+  padding: 0;
+  position: relative;
 }
 
 div[data-testid="stDataFrame"] {
@@ -108,29 +256,25 @@ div[data-testid="stDataFrame"] {
   border: 1px solid var(--c-border);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
-  padding: 0.4rem;
   overflow: hidden;
+  padding: 0.4rem;
 }
 
-.table-title {
-  color: var(--c-text);
-  font-size: 0.95rem;
-  font-weight: 700;
-  margin: 0.4rem 0 0.5rem 0;
-}
-
+/* ------------------------------------------------------------------
+   Textos de interpretación
+   ------------------------------------------------------------------ */
 .interpretation {
   background: var(--c-surface);
   border: 1px solid var(--c-border);
-  border-left: 4px solid var(--c-primary-light);
+  border-left: 5px solid var(--c-primary);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
-  padding: 0.9rem 1.2rem;
   margin: 1.2rem 0 0.4rem 0;
+  padding: 0.9rem 1.2rem;
 }
 
 .interpretation-label {
-  color: var(--c-primary-light);
+  color: var(--c-accent);
   font-size: 0.75rem;
   font-weight: 700;
   letter-spacing: 0.06em;
@@ -144,42 +288,66 @@ div[data-testid="stDataFrame"] {
   margin: 0.3rem 0 0 0;
 }
 
+/* ------------------------------------------------------------------
+   Semáforo como luces navideñas
+   ------------------------------------------------------------------ */
 .traffic-light {
   align-items: center;
-  background: var(--c-surface);
+  background: linear-gradient(180deg, #FFFFFF 0%, #FFFDF8 100%);
   border: 1px solid var(--c-border);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   display: flex;
   gap: 1rem;
   min-height: 100px;
+  overflow: hidden;
   padding: 1rem 1.2rem;
+  position: relative;
+}
+
+.traffic-light::before {
+  background: var(--candy-cane);
+  bottom: 0;
+  content: "";
+  left: 0;
+  position: absolute;
+  top: 0;
+  width: 6px;
 }
 
 .traffic-light-bulb {
+  border: 3px solid rgba(255, 255, 255, 0.7);
   border-radius: 50%;
-  box-shadow: 0 0 0 6px rgba(30, 42, 50, 0.06);
   flex: 0 0 auto;
   height: 44px;
+  margin-left: 0.3rem;
   width: 44px;
 }
 
 .traffic-light-green {
-  background: var(--c-green);
+  background: radial-gradient(circle at 35% 30%, #7BE0A4, var(--c-green) 60%);
+  box-shadow: 0 0 14px 3px rgba(36, 118, 74, 0.55);
 }
 
 .traffic-light-yellow {
-  background: var(--c-yellow);
+  background: radial-gradient(circle at 35% 30%, #FFE58A, var(--c-yellow) 60%);
+  box-shadow: 0 0 14px 3px rgba(217, 168, 28, 0.6);
 }
 
 .traffic-light-red {
-  background: var(--c-red);
+  background: radial-gradient(circle at 35% 30%, #FF7A8A, var(--c-red) 60%);
+  box-shadow: 0 0 14px 3px rgba(200, 16, 46, 0.55);
+}
+
+.traffic-light-gray {
+  background: radial-gradient(circle at 35% 30%, #F2F4F5, #C9D3D8 60%);
+  box-shadow: 0 0 0 6px rgba(30, 42, 50, 0.06);
 }
 
 .traffic-light-title {
   color: var(--c-text-soft);
   font-size: 0.78rem;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
@@ -189,4 +357,58 @@ div[data-testid="stDataFrame"] {
   font-size: 1.05rem;
   font-weight: 700;
   margin-top: 0.2rem;
+}
+
+/* ------------------------------------------------------------------
+   Tablas
+   ------------------------------------------------------------------ */
+.table-title {
+  color: var(--c-primary);
+  font-size: 0.95rem;
+  font-weight: 700;
+  margin: 0.4rem 0 0.5rem 0;
+}
+
+.colored-table-wrap {
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  max-height: 420px;
+  overflow: auto;
+}
+
+.colored-table {
+  border-collapse: separate;
+  border-spacing: 0;
+  width: 100%;
+}
+
+.colored-table th {
+  background: linear-gradient(180deg, var(--c-primary) 0%, var(--c-primary-dark) 100%);
+  border-bottom: 3px solid var(--c-gold);
+  color: #FFFFFF;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 0.7rem 1rem;
+  position: sticky;
+  text-align: left;
+  text-transform: uppercase;
+  top: 0;
+}
+
+.colored-table td {
+  border-top: 1px solid var(--c-border);
+  color: var(--c-text);
+  font-size: 0.95rem;
+  padding: 0.65rem 1rem;
+}
+
+.colored-table tbody tr:nth-child(even) td {
+  background: #FBF6EE;
+}
+
+.colored-table tbody tr:hover td {
+  background: rgba(200, 16, 46, 0.06);
 }

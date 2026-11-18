@@ -3,8 +3,8 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 from streamlit.delta_generator import DeltaGenerator
-from data.real_common import DATE_RANGES, SUBJECTS
-from data.real_participation import get_accesses, get_activity, get_student_options
+from data.real_common import DATE_RANGES
+from data.real_participation import get_accesses, get_activity, get_student_options, get_subject_options
 from ui.components.charts import bar_chart, line_chart, show_figure
 from ui.components.filters import selector
 from ui.components.texts import section_title
@@ -27,7 +27,7 @@ def show() -> None:
     student_key_prefix: str = "participation_student_"
 
     with subject_column:
-        subject: str = selector(subject_label, SUBJECTS, subject_key)
+        subject: str = selector(subject_label, get_subject_options(), subject_key)
     with range_column:
         date_range: str = selector(range_label, DATE_RANGES, range_key)
     with student_column:

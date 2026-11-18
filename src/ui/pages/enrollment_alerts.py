@@ -1,15 +1,19 @@
 from typing import Dict, List
 import pandas as pd
-import plotly.graph_objects as go
 import streamlit as st
 from streamlit.delta_generator import DeltaGenerator
-from data.real_common import SUBJECTS
-from data.real_enrollment import ALERTS, ALERTS_LABELS, ENROLLED_NO_PARTICIPATION, ENROLLED_NO_PARTICIPATION_LABELS, ENROLLED_VS_ACTIVE, ENROLLMENT_KPIS, NOT_ENROLLED_ACTIVE, NOT_ENROLLED_ACTIVE_LABELS
+from data.real_common import SUBJECT_ALL, SUBJECT_OPTIONS
+from data.real_enrollment import ALERT_ACTIVE_WITH_DROP, ALERT_NO_ENTRIES, ALERT_NOT_ENROLLED_ACTIVE, ALERTS,ALERTS_LABELS, ENROLLED_NO_PARTICIPATION, ENROLLED_NO_PARTICIPATION_LABELS, ENROLLMENT_KPIS, NOT_ENROLLED_ACTIVE, NOT_ENROLLED_ACTIVE_LABELS
 from ui.components.cards import card_row
-from ui.components.charts import bar_chart, show_figure
 from ui.components.filters import selector
 from ui.components.tables import table
 from ui.components.texts import section_title
+
+ALERT_DETAILS: Dict[str, str] = {
+    ALERT_ACTIVE_WITH_DROP: "Inscripciones",
+    ALERT_NO_ENTRIES: "Inscripciones",
+    ALERT_NOT_ENROLLED_ACTIVE: "Usuarios por asignatura",
+}
 
 def show() -> None:
     page_title: str = "Matrícula y Alertas"
@@ -17,25 +21,17 @@ def show() -> None:
     
     subject_label: str = "Asignatura"
     subject_key: str = "enrollment_subject"
-    subject: str = selector(subject_label, SUBJECTS, subject_key)
+    subject: str = selector(subject_label, SUBJECT_OPTIONS, subject_key)
     cards: List[Dict[str, str]] = ENROLLMENT_KPIS[subject]
-    enrolled_active: pd.DataFrame = ENROLLED_VS_ACTIVE[subject]
     not_enrolled: pd.DataFrame = NOT_ENROLLED_ACTIVE[subject]
     no_participation: pd.DataFrame = ENROLLED_NO_PARTICIPATION[subject]
     alerts: pd.DataFrame = ALERTS[subject]
     card_row(cards)
-    
-    enrolled_section: str = "Matriculados vs. activos"
-    section_title(enrolled_section)
-    
-    status_column: str = "status"
-    count_column: str = "count"
-    chart_title: str = "Matriculados vs. activos"
-    x_title: str = "Estado"
-    y_title: str = "Estudiantes"
-    figure: go.Figure = bar_chart(enrolled_active, status_column, count_column, chart_title, x_title, y_title)
-    show_figure(figure)
-    
+
+    if subject == SUBJECT_ALL:
+        all_note: str = "En \"Todas las asignaturas\" las cifras cuentan inscripciones: un alumno inscripto en varias asignaturas se cuenta una vez por cada una."
+        st.caption(all_note)
+
     detail_section: str = "Detalle"
     section_title(detail_section)
     
@@ -54,6 +50,17 @@ def show() -> None:
     alerts_section: str = "Alertas"
     section_title(alerts_section)
     
+    alert_types: List[str] = [ALERT_ACTIVE_WITH_DROP, ALERT_NO_ENTRIES, ALERT_NOT_ENROLLED_ACTIVE]
+    alert_cards: List[Dict[str, str]] = []
+
+    for alert_type in alert_types:
+        type_count: int = int((alerts["alert"] == alert_type).sum())
+        alert_cards.append({"title": alert_type, "value": str(type_count), "detail": ALERT_DETAILS[alert_type]})
+
+    total_card: Dict[str, str] = {"title": "Total de alertas", "value": str(len(alerts)), "detail": "Suma de las alertas (inscripciones)"}
+    alert_cards.append(total_card)
+    card_row(alert_cards)
+
     alerts_title: str = "Alertas de la asignatura"
     table(alerts, alerts_title, ALERTS_LABELS)
 

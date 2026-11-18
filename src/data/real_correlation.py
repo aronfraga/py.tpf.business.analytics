@@ -3,15 +3,18 @@ from typing import Any, Dict, List, Optional, Tuple
 import pandas as pd
 
 from data.real_common import (
+    ALL_KEY,
+    SUBJECT_ALL,
     SUBJECT_KEYS,
-    SUBJECTS,
+    SUBJECT_OPTIONS,
     load_enrolled_traceability,
     load_enrollment_cross,
     load_grades,
     load_participation,
+    sort_by_id_asc,
 )
-from kpis.kpis_calificaciones import condicion_por_estudiante, nota_por_estudiante
-from kpis.kpis_cruces import correlacion_participacion_nota, linea_de_tendencia
+from kpis.kpis_calificaciones import condicion_por_estudiante
+from kpis.kpis_cruces import correlacion_participacion_nota, linea_de_tendencia, participacion_vs_notas
 from kpis.kpis_participacion import DIAS_ACTIVIDAD, sesiones_por_estudiante
 
 SUBJECT_COLUMN: str = "materia"
@@ -21,7 +24,7 @@ KPI_X_COLUMN: str = "tiempo_min"
 GRADE_PERCENT_COLUMN: str = "nota_pct"
 PRESENTED_COLUMN: str = "se_presento"
 PEARSON_COLUMN: str = "pearson"
-SESSIONS_COLUMN: str = "sessions"
+TIME_COLUMN: str = "time_min"
 GRADE_COLUMN: str = "grade"
 GROUP_SOURCE_COLUMN: str = "grupo"
 GROUP_COLUMN: str = "group"
@@ -58,24 +61,17 @@ RISK_LABELS: Dict[str, str] = {
 SCALE_DIVISOR: int = 10
 GRADE_DECIMALS: int = 2
 VALUE_FORMAT: str = ".2f"
-CARD_TITLE: str = "Correlación sesiones–nota"
+CARD_TITLE: str = "Correlación tiempo–nota (Pearson)"
 
 NO_ASSOCIATION_LIMIT: float = 0.1
 WEAK_LIMIT: float = 0.3
 MODERATE_LIMIT: float = 0.5
 
-def build_points_table(traceability: pd.DataFrame, grades: pd.DataFrame, enrollment_cross: pd.DataFrame) -> pd.DataFrame:
+def build_points_table(participation: pd.DataFrame, traceability: pd.DataFrame, grades: pd.DataFrame, enrollment_cross: pd.DataFrame) -> pd.DataFrame:
+    time_and_grades: pd.DataFrame = participacion_vs_notas(participacion=participation, calificaciones=grades, cruce=enrollment_cross)
     sessions: pd.DataFrame = sesiones_por_estudiante(trazabilidad=traceability, cruce=enrollment_cross)
-    student_grades: pd.DataFrame = nota_por_estudiante(calificaciones=grades)
     pair_columns: list = [SUBJECT_COLUMN, USER_COLUMN]
-    grade_columns: list = [SUBJECT_COLUMN, USER_COLUMN, GRADE_PERCENT_COLUMN]
-    selected_grades: pd.DataFrame = student_grades[grade_columns]
-    merged: pd.DataFrame = sessions.merge(selected_grades, on=pair_columns, how="left")
-    merged[PRESENTED_COLUMN] = merged[GRADE_PERCENT_COLUMN].notna()
-    filled_grades: pd.Series = merged[GRADE_PERCENT_COLUMN].fillna(0)
-    merged[GRADE_PERCENT_COLUMN] = filled_grades
-    rename_map: Dict[str, str] = {SESSIONS_SOURCE_COLUMN: KPI_X_COLUMN}
-    result: pd.DataFrame = merged.rename(columns=rename_map)
+    result: pd.DataFrame = time_and_grades.merge(sessions, on=pair_columns, how="left")
 
     return result
 
@@ -90,10 +86,10 @@ def build_xy_table(source: pd.DataFrame, subject: str) -> pd.DataFrame:
     subject_key: str = SUBJECT_KEYS[subject]
     is_subject: pd.Series = source[SUBJECT_COLUMN] == subject_key
     selected: pd.DataFrame = source.loc[is_subject]
-    sessions: List[float] = selected[KPI_X_COLUMN].tolist()
+    times: List[float] = selected[KPI_X_COLUMN].tolist()
     grades: List[float] = scale_grades(percent_values=selected[GRADE_PERCENT_COLUMN])
     table_data: Dict[str, list] = {
-        SESSIONS_COLUMN: sessions,
+        TIME_COLUMN: times,
         GRADE_COLUMN: grades,
     }
     result: pd.DataFrame = pd.DataFrame(table_data)
@@ -132,11 +128,11 @@ def build_scatter_table(source: pd.DataFrame, subject: str) -> pd.DataFrame:
     subject_key: str = SUBJECT_KEYS[subject]
     is_subject: pd.Series = source[SUBJECT_COLUMN] == subject_key
     selected: pd.DataFrame = source.loc[is_subject]
-    sessions: List[float] = selected[KPI_X_COLUMN].tolist()
+    times: List[float] = selected[KPI_X_COLUMN].tolist()
     grades: List[float] = scale_grades(percent_values=selected[GRADE_PERCENT_COLUMN])
     groups: List[str] = selected[GROUP_SOURCE_COLUMN].tolist()
     table_data: Dict[str, list] = {
-        SESSIONS_COLUMN: sessions,
+        TIME_COLUMN: times,
         GRADE_COLUMN: grades,
         GROUP_COLUMN: groups,
     }
@@ -209,7 +205,7 @@ def build_risk_table(grouped_points: pd.DataFrame, participation_index: Dict[Tup
             last_name: str = getattr(participation_row, LAST_NAME_COLUMN)
             first_name: str = getattr(participation_row, FIRST_NAME_COLUMN)
             student_label: str = f"{user} – {last_name}, {first_name}"
-            session_count: int = int(getattr(row, KPI_X_COLUMN))
+            session_count: int = int(getattr(row, SESSIONS_SOURCE_COLUMN))
             grade_value: Optional[float]
             last_text: str
 
@@ -281,18 +277,26 @@ def build_card(correlations: pd.DataFrame, subject: str) -> Dict[str, str]:
 
     return result
 
+def add_pooled_rows(table: pd.DataFrame) -> pd.DataFrame:
+    pooled: pd.DataFrame = table.assign(**{SUBJECT_COLUMN: ALL_KEY})
+    result: pd.DataFrame = pd.concat([table, pooled], ignore_index=True)
+
+    return result
+
 def build_all() -> Dict[str, Dict[str, object]]:
     traceability: pd.DataFrame = load_enrolled_traceability()
     grades: pd.DataFrame = load_grades()
     enrollment_cross: pd.DataFrame = load_enrollment_cross()
+    participation: pd.DataFrame = load_participation()
     points_table: pd.DataFrame = build_points_table(
+        participation=participation,
         traceability=traceability,
         grades=grades,
         enrollment_cross=enrollment_cross,
     )
-    correlations: pd.DataFrame = correlacion_participacion_nota(tabla=points_table)
-    trend_table: pd.DataFrame = linea_de_tendencia(tabla=points_table)
-    participation: pd.DataFrame = load_participation()
+    pooled_points: pd.DataFrame = add_pooled_rows(points_table)
+    correlations: pd.DataFrame = correlacion_participacion_nota(tabla=pooled_points)
+    trend_table: pd.DataFrame = linea_de_tendencia(tabla=pooled_points)
     conditions: Dict[Tuple[str, str], str] = build_conditions(grades=grades, enrollment_cross=enrollment_cross)
     grouped_points: pd.DataFrame = add_groups(points_table=points_table, conditions=conditions)
     participation_index: Dict[Tuple[str, str], Any] = index_participation(participation=participation)
@@ -302,11 +306,21 @@ def build_all() -> Dict[str, Dict[str, object]]:
     cards: Dict[str, Dict[str, str]] = {}
     risks: Dict[str, pd.DataFrame] = {}
 
-    for subject in SUBJECTS:
-        scatter[subject] = build_scatter_table(source=grouped_points, subject=subject)
+    pooled_grouped: pd.DataFrame = add_pooled_rows(grouped_points)
+
+    for subject in SUBJECT_OPTIONS:
+        scatter[subject] = build_scatter_table(source=pooled_grouped, subject=subject)
         trend[subject] = build_xy_table(source=trend_table, subject=subject)
         cards[subject] = build_card(correlations=correlations, subject=subject)
-        risks[subject] = build_risk_table(grouped_points=grouped_points, participation_index=participation_index, cutoff=cutoff, subject=subject)
+
+        if subject != SUBJECT_ALL:
+            risks[subject] = build_risk_table(grouped_points=grouped_points, participation_index=participation_index, cutoff=cutoff, subject=subject)
+
+    all_risks: pd.DataFrame = pd.concat(list(risks.values()), ignore_index=True)
+    risks[SUBJECT_ALL] = all_risks
+
+    for subject_name in list(risks.keys()):
+        risks[subject_name] = sort_by_id_asc(risks[subject_name], "student")
 
     result: Dict[str, Dict[str, object]] = {
         "scatter": scatter,

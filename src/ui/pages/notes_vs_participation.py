@@ -3,7 +3,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 from streamlit.delta_generator import DeltaGenerator
-from data.real_common import SUBJECTS
+from data.real_common import SUBJECT_OPTIONS
 from data.real_correlation import CORRELATION, RISK_LABELS, RISK_STUDENTS, SCATTER, TREND_LINE
 from ui.components.cards import kpi_card
 from ui.components.charts import scatter_by_group, show_figure
@@ -17,12 +17,12 @@ def show() -> None:
 
     subject_label: str = "Asignatura"
     subject_key: str = "correlation_subject"
-    subject: str = selector(subject_label, SUBJECTS, subject_key)
+    subject: str = selector(subject_label, SUBJECT_OPTIONS, subject_key)
     points: pd.DataFrame = SCATTER[subject]
     trend: pd.DataFrame = TREND_LINE[subject]
     card: Dict[str, str] = CORRELATION[subject]
     risk: pd.DataFrame = RISK_STUDENTS[subject]
-    section: str = "Relación entre sesiones y notas"
+    section: str = "Relación entre tiempo en la plataforma y notas"
 
     section_title(section)
 
@@ -32,11 +32,11 @@ def show() -> None:
 
     chart_column, card_column = st.columns(widths)
 
-    x_column: str = "sessions"
+    x_column: str = "time_min"
     y_column: str = "grade"
     group_column: str = "group"
-    chart_title: str = "Notas vs. sesiones"
-    x_title: str = "Sesiones"
+    chart_title: str = "Notas vs. tiempo en la plataforma"
+    x_title: str = "Tiempo en la plataforma (min)"
     y_title: str = "Nota"
 
     figure: go.Figure = scatter_by_group(points, trend, x_column, y_column, group_column, chart_title, x_title, y_title)

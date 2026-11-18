@@ -5,6 +5,7 @@ import pandas as pd
 from data.real_common import (
     ANCHOR_DATE,
     DATE_RANGES,
+    SUBJECT_ALL,
     SUBJECT_KEYS,
     SUBJECTS,
     load_enrolled_traceability,
@@ -147,7 +148,25 @@ def build_student_catalog() -> Dict[str, Dict[str, str]]:
 
 STUDENT_CATALOG: Dict[str, Dict[str, str]] = build_student_catalog()
 
+def get_subject_options() -> List[str]:
+    options: List[str] = [SUBJECT_ALL]
+    options.extend(SUBJECTS)
+
+    return options
+
+def sum_subjects(tables_by_subject: Dict[str, pd.DataFrame], value_column: str) -> pd.DataFrame:
+    tables: List[pd.DataFrame] = list(tables_by_subject.values())
+    combined: pd.DataFrame = pd.concat(tables, ignore_index=True)
+    grouped: pd.Series = combined.groupby(DATE_COLUMN)[value_column].sum()
+    sorted_values: pd.Series = grouped.sort_index()
+    result: pd.DataFrame = sorted_values.reset_index()
+
+    return result
+
 def get_student_options(subject: str) -> List[str]:
+    if subject == SUBJECT_ALL:
+        return [STUDENT_ALL]
+
     labels_to_users: Dict[str, str] = STUDENT_CATALOG[subject]
     labels: List[str] = list(labels_to_users.keys())
     options: List[str] = [STUDENT_ALL]
@@ -187,7 +206,10 @@ def get_activity(subject: str, date_range: str, student: str) -> pd.DataFrame:
 
     if student == STUDENT_ALL:
         activity_of_range: Dict[str, pd.DataFrame] = ACTIVITY_BY_DATE[date_range]
-        result = activity_of_range[subject]
+        if subject == SUBJECT_ALL:
+            result = sum_subjects(activity_of_range, ACTIVITIES_COLUMN)
+        else:
+            result = activity_of_range[subject]
     else:
         daily: pd.DataFrame = build_student_daily(subject=subject, student=student, range_label=date_range)
         columns: List[str] = [DATE_COLUMN, ACTIVITIES_COLUMN]
@@ -200,7 +222,10 @@ def get_accesses(subject: str, date_range: str, student: str) -> pd.DataFrame:
 
     if student == STUDENT_ALL:
         accesses_of_range: Dict[str, pd.DataFrame] = ACCESS_EVOLUTION[date_range]
-        result = accesses_of_range[subject]
+        if subject == SUBJECT_ALL:
+            result = sum_subjects(accesses_of_range, ACCESSES_COLUMN)
+        else:
+            result = accesses_of_range[subject]
     else:
         daily: pd.DataFrame = build_student_daily(subject=subject, student=student, range_label=date_range)
         columns: List[str] = [DATE_COLUMN, ACCESSES_COLUMN]
