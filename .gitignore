@@ -15,6 +15,11 @@
 *.tmp
 *.swp
 
+# Cachés generadas por Python
+__pycache__/
+*.pyc
+*.pyo
+
 project.lock.json
 artifacts/
 publish/
@@ -41,6 +46,9 @@ secrets.json
 .env
 .env.*
 !.env.example
+env/
+.venv/
+venv/
 
 wwwroot/lib/
 node_modules/
