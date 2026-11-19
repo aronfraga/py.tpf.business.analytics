@@ -4,11 +4,6 @@ Entrada : data/integrado/trazabilidad_integrado.parquet (generado por integracio
           La carpeta data/ se busca en la raíz del proyecto (dos niveles arriba de src/kpis/).
 Salida  : DataFrames de pandas (no se escriben archivos).
 
-Uso:
-    from kpis_trazabilidad import calcular_kpis_trazabilidad
-    kpis = calcular_kpis_trazabilidad(solo_matriculados=True)
-    kpis["frecuencia_ingreso_semanal"]   # DataFrame
-
 Definiciones (ajustables):
   - Interacción : cada fila de trazabilidad (un evento: acceso, clic, navegación).
   - Ingreso     : inicio de una sesión. La trazabilidad no trae un identificador de sesión, así que una
@@ -35,10 +30,8 @@ from constants import (
     DAILY_AVERAGE_ACTIVE_DAYS_COLUMN,
     DAILY_AVERAGE_COLUMN,
     DAILY_FREQUENCY,
-    DATA_PATH,
     DAYS_WITH_ACTIVITY_COLUMN,
     DAY_COLUMN,
-    DIFFERENCE_COLUMN,
     ENROLLED_COLUMN,
     ENROLLMENT_CROSS_FILE,
     ENTRIES_COLUMN,
@@ -52,20 +45,8 @@ from constants import (
     INTERACTIONS_COLUMN,
     INTERACTIONS_PER_ACTIVE_USER_COLUMN,
     INTERACTION_TYPES,
-    KPI_ACTIVITY_BY_DAY_AND_SLOT,
-    KPI_DAILY_INTERACTIONS,
-    KPI_INTERACTIONS_BY_ACTION,
-    KPI_INTERACTIONS_BY_TYPE,
-    KPI_INTERACTIONS_BY_WEEKDAY,
-    KPI_INTERACTIONS_SUMMARY,
-    KPI_MONTHLY_ENTRY_FREQUENCY,
-    KPI_WEEKLY_ENTRY_FREQUENCY,
-    MATCH_COLUMN,
-    MAX_DIFFERENCE_COLUMN,
-    MONTHLY_FREQUENCY,
     NAVIGATION_ACTIONS,
     NO_ACTION_LABEL,
-    PARTICIPATION_FILE,
     PERCENTAGE_COLUMN,
     PERCENT_FACTOR,
     PERIOD_COLUMN,
@@ -76,27 +57,21 @@ from constants import (
     TIME_SLOT_COLUMN,
     TIME_SLOT_LABEL_TEMPLATE,
     TIME_SLOT_NUMBER_COLUMN,
-    TOTAL_DIFFERENCE_COLUMN,
     TOTAL_INTERACTIONS_COLUMN,
     TRACEABILITY_FILE,
-    TRACE_EVENTS_COLUMN,
     TYPE_BY_SECTION,
     TYPE_COLUMN,
     TYPE_NAVIGATION,
     TYPE_OTHERS,
-    USERS_COLUMN,
     USER_COLUMN,
     WEEKDAY_COLUMN,
     WEEKDAY_NAMES,
     WEEKDAY_NUMBER_COLUMN,
-    WEEKLY_FREQUENCY,
     WHOLE_PERIOD_COLUMN,
 )
 
 DIAS_SEMANA = WEEKDAY_NAMES
 
-# src/kpis/kpis_trazabilidad.py -> raíz del proyecto -> data/
-DATOS_POR_DEFECTO = DATA_PATH
 
 # Tipo de interacción: las acciones de acceso son navegación (clics) sin importar la sección; el resto
 # se clasifica por sección. Lo que no figura acá cae en OTROS_TIPO.
@@ -254,43 +229,3 @@ def matriz_dia_franja(actividad, materia, valor=INTERACTIONS_COLUMN):
     """Matriz día de la semana (filas) x franja horaria (columnas) de una materia, para `heatmap`."""
     t = actividad[actividad[SUBJECT_COLUMN] == materia]
     return t.pivot(index=WEEKDAY_COLUMN, columns=TIME_SLOT_COLUMN, values=valor).reindex(list(DIAS_SEMANA.values()))
-
-
-# ----------------------------------------------------------------------------
-# Control: trazabilidad vs. columna `interacciones` del reporte de participación
-# ----------------------------------------------------------------------------
-def validar_contra_participacion(df, datos):
-    part = pd.read_parquet(datos / INTEGRATED_FOLDER_NAME / PARTICIPATION_FILE,
-                           columns=[SUBJECT_COLUMN, USER_COLUMN, INTERACTIONS_COLUMN])
-    traz = df.groupby([SUBJECT_COLUMN, USER_COLUMN]).size().rename(TRACE_EVENTS_COLUMN).reset_index()
-    cmp = part.merge(traz, on=[SUBJECT_COLUMN, USER_COLUMN], how="left")
-    cmp[TRACE_EVENTS_COLUMN] = cmp[TRACE_EVENTS_COLUMN].fillna(0).astype(int)
-    cmp[DIFFERENCE_COLUMN] = cmp[TRACE_EVENTS_COLUMN] - cmp[INTERACTIONS_COLUMN]
-    return cmp.groupby(SUBJECT_COLUMN).agg(
-        **{USERS_COLUMN: (USER_COLUMN, "size"), MATCH_COLUMN: (DIFFERENCE_COLUMN, lambda s: int((s == 0).sum())), TOTAL_DIFFERENCE_COLUMN: (DIFFERENCE_COLUMN, "sum"), MAX_DIFFERENCE_COLUMN: (DIFFERENCE_COLUMN, lambda s: int(s.abs().max()))},
-    ).reset_index()
-
-
-# ----------------------------------------------------------------------------
-def calcular_kpis_trazabilidad(datos=None, solo_matriculados=False, minutos_inactividad=INACTIVITY_MINUTES):
-    """Calcula todos los KPIs de trazabilidad y los devuelve como DataFrames.
-
-    Devuelve un dict con las claves: frecuencia_ingreso_semanal, frecuencia_ingreso_mensual,
-    interacciones_diarias (también sirve como línea temporal), interacciones_resumen,
-    interacciones_por_dia_semana, interacciones_por_tipo, interacciones_por_accion y
-    actividad_dia_franja.
-    """
-    datos = Path(datos) if datos else DATOS_POR_DEFECTO
-    df = marcar_ingresos(cargar_trazabilidad(datos, solo_matriculados), minutos_inactividad)
-    diario = interacciones_diarias(df)
-    return {
-        KPI_WEEKLY_ENTRY_FREQUENCY: frecuencia_ingreso(df, WEEKLY_FREQUENCY),
-        KPI_MONTHLY_ENTRY_FREQUENCY: frecuencia_ingreso(df, MONTHLY_FREQUENCY),
-        KPI_DAILY_INTERACTIONS: diario,
-        KPI_INTERACTIONS_SUMMARY: resumen_interacciones(df, diario),
-        KPI_INTERACTIONS_BY_WEEKDAY: interacciones_por_dia_semana(diario),
-        KPI_INTERACTIONS_BY_TYPE: interacciones_por_tipo(df),
-        KPI_INTERACTIONS_BY_ACTION: interacciones_por_accion(df),
-        KPI_ACTIVITY_BY_DAY_AND_SLOT: actividad_por_dia_y_franja(df),
-    }
-

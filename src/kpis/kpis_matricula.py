@@ -4,11 +4,6 @@ Entrada : data/integrado/{participacion,calificaciones,cruce_matriculados}_integ
           (generados por integracion.ipynb). La carpeta data/ se busca en la raíz del proyecto.
 Salida  : DataFrames de pandas (no se escriben archivos).
 
-Para calcular todo de una vez:
-    from kpis_matricula import calcular_kpis_matricula
-    kpis = calcular_kpis_matricula()
-    kpis["activos_por_matricula"]   # DataFrame
-
 Definiciones:
   - Activo      : tuvo al menos una interacción en el aula (`interacciones > 0` en el reporte de
                   participación). Estar listado en el reporte no alcanza: incluye a todo el padrón de la
@@ -30,34 +25,19 @@ from constants import (
     CONDITION_COLUMN,
     CONDITION_DROPPED,
     CONDITION_NOT_PRESENTED,
-    DATA_PATH,
     ENROLLED_ACTIVE_COLUMN,
     ENROLLED_COLUMN,
-    ENROLLMENT_CROSS_FILE,
     ENROLLMENT_STATE_COLUMN,
     ENROLLMENT_STATE_DROPPED,
-    GRADES_FILE,
-    INTEGRATED_FOLDER_NAME,
     INTERACTIONS_COLUMN,
     KEY_COLUMNS,
-    KPI_ACADEMIC_SITUATION,
-    KPI_ACADEMIC_SITUATION_SUMMARY,
-    KPI_ACTIVE_BY_ENROLLMENT,
-    KPI_ACTIVE_STUDENTS,
     NOT_ENROLLED_ACTIVE_COLUMN,
-    PARTICIPATION_FILE,
     PERCENTAGE_COLUMN,
     PERCENT_FACTOR,
     ROUND_DECIMALS,
     SITUATIONS,
-    SITUATION_COLORS,
     SITUATION_COLUMN,
     SITUATION_GENERAL,
-    STATIC_FIGURE_DPI,
-    STATIC_MIN_LABEL_PERCENT,
-    STATIC_PERCENT_LABEL_TEMPLATE,
-    STATIC_SITUATION_PERCENT_LABEL,
-    STATIC_SITUATION_TITLE,
     STUDENTS_COLUMN,
     SUBJECT_COLUMN,
 )
@@ -67,8 +47,6 @@ try:  # como paquete (kpis.kpis_matricula) o como módulo suelto (kpis_matricula
 except ImportError:
     from kpis_calificaciones import condicion_por_estudiante
 
-# src/kpis/kpis_matricula.py -> raíz del proyecto -> data/
-DATOS_POR_DEFECTO = DATA_PATH
 
 CLAVES = KEY_COLUMNS
 SITUACIONES = SITUATIONS
@@ -141,62 +119,3 @@ def resumen_situacion_academica(situacion: pd.DataFrame) -> pd.DataFrame:
     res = conteo.stack().rename(STUDENTS_COLUMN).reset_index()
     res[PERCENTAGE_COLUMN] = (res[STUDENTS_COLUMN] / res.groupby(SUBJECT_COLUMN)[STUDENTS_COLUMN].transform("sum") * PERCENT_FACTOR).round(ROUND_DECIMALS)
     return res
-
-
-def graficar_situacion_academica(resumen: pd.DataFrame, ruta: Path | None = None):
-    """Barras horizontales apiladas (100 %) de la situación académica, por asignatura y en general.
-
-    Usa matplotlib, que se importa acá para que el resto del módulo no lo requiera. Si se indica
-    `ruta`, guarda la imagen. Devuelve la figura.
-    """
-    import matplotlib.pyplot as plt
-    import numpy as np
-
-    colores = SITUATION_COLORS
-    porcentajes = resumen.pivot(index=SUBJECT_COLUMN, columns=SITUATION_COLUMN, values=PERCENTAGE_COLUMN)[SITUACIONES]
-    orden = [m for m in porcentajes.index if m != SITUATION_GENERAL] + [SITUATION_GENERAL]
-    porcentajes = porcentajes.loc[orden]
-    etiquetas = [m.capitalize() for m in porcentajes.index]
-
-    fig, eje = plt.subplots(figsize=(9, 3.6))
-    izquierda = np.zeros(len(porcentajes))
-    for situacion in SITUACIONES:
-        valores = porcentajes[situacion].to_numpy()
-        barras = eje.barh(etiquetas, valores, left=izquierda, color=colores[situacion], label=situacion)
-        eje.bar_label(barras, labels=[STATIC_PERCENT_LABEL_TEMPLATE.format(value=v) if v >= STATIC_MIN_LABEL_PERCENT else "" for v in valores], label_type="center",
-                      fontsize=9, color="white")
-        izquierda += valores
-    eje.invert_yaxis()
-    eje.set_xlim(0, 100)
-    eje.set_xlabel(STATIC_SITUATION_PERCENT_LABEL)
-    eje.set_title(STATIC_SITUATION_TITLE, loc="left")
-    eje.spines[["top", "right"]].set_visible(False)
-    eje.legend(loc="upper center", bbox_to_anchor=(0.5, -0.22), ncol=len(SITUACIONES), frameon=False)
-    fig.tight_layout()
-    if ruta is not None:
-        fig.savefig(ruta, dpi=STATIC_FIGURE_DPI, bbox_inches="tight")
-    return fig
-
-
-# ----------------------------------------------------------------------------
-# Todos los KPI
-# ----------------------------------------------------------------------------
-def calcular_kpis_matricula(datos=None) -> dict[str, pd.DataFrame]:
-    """Lee los datos integrados y devuelve los KPI de matrícula como DataFrames.
-
-    Claves: estudiantes_activos (detalle; los no matriculados son la alerta), activos_por_matricula,
-    situacion_academica (detalle) y situacion_academica_resumen.
-    """
-    integrado = (Path(datos) if datos else DATOS_POR_DEFECTO) / INTEGRATED_FOLDER_NAME
-    participacion = pd.read_parquet(integrado / PARTICIPATION_FILE)
-    calificaciones = pd.read_parquet(integrado / GRADES_FILE)
-    cruce = pd.read_parquet(integrado / ENROLLMENT_CROSS_FILE)
-
-    activos = estudiantes_activos(participacion, cruce)
-    situacion = situacion_academica(calificaciones, cruce)
-    return {
-        KPI_ACTIVE_STUDENTS: activos,
-        KPI_ACTIVE_BY_ENROLLMENT: resumen_activos_por_matricula(activos),
-        KPI_ACADEMIC_SITUATION: situacion,
-        KPI_ACADEMIC_SITUATION_SUMMARY: resumen_situacion_academica(situacion),
-    }

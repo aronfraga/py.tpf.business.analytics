@@ -9,11 +9,9 @@ from data.real_common import (
     load_enrollment_list,
     load_participation,
     sort_by_id_asc,
-    sum_tables,
 )
 from kpis.kpis_matricula import estudiantes_activos, resumen_activos_por_matricula
 from constants import (
-    ACTIVE_LABEL,
     ACTIVE_OF_ENROLLED_DETAIL_TEMPLATE,
     ALERTS_KEY,
     ALERTS_LABEL,
@@ -30,7 +28,6 @@ from constants import (
     CARD_NEVER_ENTERED_DETAIL,
     CARD_NO_ENROLLMENT_DETAIL,
     CARD_OFFICIAL_ENROLLMENTS_DETAIL,
-    COUNT_COLUMN,
     DATE_FORMAT,
     DETAIL_KEY,
     ENROLLED_ACTIVE_COLUMN,
@@ -38,7 +35,6 @@ from constants import (
     ENROLLED_LABEL,
     ENROLLED_WITH_ACTIVITY_LABEL,
     ENROLLED_NO_PARTICIPATION_TITLE,
-    ENROLLED_VS_ACTIVE_KEY,
     ENROLLMENT_DATE_COLUMN,
     ENROLLMENT_DATE_TABLE_COLUMN,
     ENTRY_COLUMN,
@@ -61,7 +57,6 @@ from constants import (
     PERCENT_FACTOR,
     SESSIONS_COLUMN,
     SPINNER_BUILD_ENROLLMENT,
-    STATUS_COLUMN,
     STUDENT_LABEL_TEMPLATE,
     STUDENT_TABLE_COLUMN,
     SUBJECTS,
@@ -254,15 +249,6 @@ def sum_cards(cards: Dict[str, List[Dict[str, str]]]) -> List[Dict[str, str]]:
 
     return result
 
-def build_enrolled_vs_active(enrolled_count: int, enrolled_active: int) -> pd.DataFrame:
-    table_data: Dict[str, list] = {
-        STATUS_COLUMN: [ENROLLED_LABEL, ACTIVE_LABEL],
-        COUNT_COLUMN: [enrolled_count, enrolled_active],
-    }
-    result: pd.DataFrame = pd.DataFrame(table_data)
-
-    return result
-
 @st.cache_data(ttl=CACHE_TTL_SECONDS, show_spinner=SPINNER_BUILD_ENROLLMENT)
 def build_all() -> Dict[str, Dict[str, Any]]:
     participation: pd.DataFrame = load_participation()
@@ -275,7 +261,6 @@ def build_all() -> Dict[str, Dict[str, Any]]:
     active_students: pd.DataFrame = estudiantes_activos(participacion=participation, cruce=cross)
     summary: pd.DataFrame = resumen_activos_por_matricula(activos=active_students)
     cards: Dict[str, List[Dict[str, str]]] = {}
-    enrolled_vs_active: Dict[str, pd.DataFrame] = {}
     not_enrolled: Dict[str, pd.DataFrame] = {}
     no_participation: Dict[str, pd.DataFrame] = {}
     alerts: Dict[str, pd.DataFrame] = {}
@@ -301,7 +286,6 @@ def build_all() -> Dict[str, Dict[str, Any]]:
             no_participation=len(no_participation_users),
             alerts_count=alerts_count,
         )
-        enrolled_vs_active[subject] = build_enrolled_vs_active(enrolled_count=enrolled_count, enrolled_active=enrolled_active_count)
 
     not_enrolled[SUBJECT_ALL] = pd.concat(list(not_enrolled.values()), ignore_index=True)
     no_participation[SUBJECT_ALL] = pd.concat(list(no_participation.values()), ignore_index=True)
@@ -312,11 +296,9 @@ def build_all() -> Dict[str, Dict[str, Any]]:
         alerts[subject_name] = sort_by_id_asc(alerts[subject_name], STUDENT_TABLE_COLUMN)
 
     cards[SUBJECT_ALL] = sum_cards(cards=cards)
-    enrolled_vs_active[SUBJECT_ALL] = sum_tables(list(enrolled_vs_active.values()), [STATUS_COLUMN], [COUNT_COLUMN])
 
     result: Dict[str, Dict[str, Any]] = {
         CARDS_KEY: cards,
-        ENROLLED_VS_ACTIVE_KEY: enrolled_vs_active,
         NOT_ENROLLED_KEY: not_enrolled,
         NO_PARTICIPATION_KEY: no_participation,
         ALERTS_KEY: alerts,

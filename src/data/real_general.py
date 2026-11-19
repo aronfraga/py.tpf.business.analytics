@@ -14,14 +14,12 @@ from kpis.kpis_participacion import estudiantes_activos_vs_inactivos, sesiones_p
 from kpis.kpis_trazabilidad import frecuencia_ingreso
 from constants import (
     ACTIVE_COUNT_COLUMN,
-    ACTIVE_INACTIVE_KEY,
     ACTIVE_LABEL,
     ACTIVE_PERCENT_COLUMN,
     ACTIVE_PERCENT_DETAIL_TEMPLATE,
     AVERAGE_ACTIVE_COLUMN,
     AVERAGE_PERCENT_COLUMN,
     CACHE_TTL_SECONDS,
-    CARDS_KEY,
     CARD_AVERAGE_GRADE_TITLE,
     CARD_AVERAGE_SESSIONS_TITLE,
     CARD_ENROLLED_DETAIL,
@@ -160,7 +158,7 @@ def build_participation_trend(weekly: pd.DataFrame, subject: str) -> pd.DataFram
     weeks: List[str] = []
     week_number: int = 1
 
-    for value in values:
+    for _ in values:
         week_label: str = WEEK_LABEL_TEMPLATE.format(prefix=WEEK_PREFIX, number=week_number)
         weeks.append(week_label)
         week_number = week_number + 1
@@ -180,25 +178,18 @@ def build_all() -> Dict[str, Dict[str, object]]:
     enrollment_cross: pd.DataFrame = load_enrollment_cross()
     traceability: pd.DataFrame = load_enrolled_traceability()
     enrolled_participation: pd.DataFrame = keep_enrolled_participation(participation=participation, enrollment_cross=enrollment_cross)
-    active_table: pd.DataFrame = estudiantes_activos_vs_inactivos(participacion=enrolled_participation, cruce=enrollment_cross)
     grades_table: pd.DataFrame = promedio_general_por_asignatura(calificaciones=grades, cruce=enrollment_cross, matriculados=True)
     sessions_table: pd.DataFrame = sesiones_promedio_por_estudiante(trazabilidad=traceability, cruce=enrollment_cross)
     distribution: pd.DataFrame = distribucion_de_notas(calificaciones=grades, cruce=enrollment_cross, ancho_bin=DISTRIBUTION_BIN_WIDTH, matriculados=True)
     weekly: pd.DataFrame = frecuencia_ingreso(df=traceability, freq=WEEKLY_FREQUENCY)
-    cards: Dict[str, List[Dict[str, str]]] = {}
-    active_inactive: Dict[str, pd.DataFrame] = {}
     distributions: Dict[str, pd.DataFrame] = {}
     trends: Dict[str, pd.DataFrame] = {}
 
     for subject in SUBJECTS:
-        cards[subject] = build_cards(subject=subject, active_table=active_table, grades_table=grades_table, sessions_table=sessions_table)
-        active_inactive[subject] = build_active_inactive(active_table=active_table, subject=subject)
         distributions[subject] = build_grade_distribution(distribution=distribution, subject=subject)
         trends[subject] = build_participation_trend(weekly=weekly, subject=subject)
 
     result: Dict[str, Dict[str, object]] = {
-        CARDS_KEY: cards,
-        ACTIVE_INACTIVE_KEY: active_inactive,
         DISTRIBUTION_KEY: distributions,
         TREND_KEY: trends,
         CONTEXT_KEY: {

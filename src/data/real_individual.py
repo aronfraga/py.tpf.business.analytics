@@ -238,10 +238,8 @@ def build_all_subjects_entry(entries: Dict[str, Dict[str, Any]]) -> Dict[str, An
         participation_series[subject] = entry[PARTICIPATION_KEY]
         traceability_tables.append(entry[TRACEABILITY_KEY])
         light: Tuple[Optional[str], str, str] = entry[TRAFFIC_LIGHTS_KEY][0]
-        light_subject: Optional[str]
-        light_color: str
-        light_text: str
-        light_subject, light_color, light_text = light
+        light_color: str = light[1]
+        light_text: str = light[2]
         lights.append((subject, light_color, light_text))
 
         if len(entry[GRADES_KEY]) == 0:

@@ -92,7 +92,6 @@ DATA_START_DATE: pd.Timestamp = pd.Timestamp("2025-08-05")
 DATE_FORMAT: str = "%Y-%m-%d"
 DAILY_FREQUENCY: str = "D"
 WEEKLY_FREQUENCY: str = "W"
-MONTHLY_FREQUENCY: str = "M"
 
 RANGE_ALL: str = "Todo el período"
 RANGE_4_WEEKS: str = "Últimas 4 semanas"
@@ -163,13 +162,7 @@ TYPE_COLUMN: str = "tipo"
 ENTRY_COLUMN: str = "es_ingreso"
 INTERACTIONS_COLUMN: str = "interacciones"
 ENTRIES_COLUMN: str = "ingresos"
-DIFFERENCE_COLUMN: str = "diferencia"
-TRACE_EVENTS_COLUMN: str = "eventos_trazabilidad"
 ACTIVE_USERS_COLUMN: str = "usuarios_activos"
-USERS_COLUMN: str = "usuarios"
-MATCH_COLUMN: str = "coinciden"
-TOTAL_DIFFERENCE_COLUMN: str = "diferencia_total"
-MAX_DIFFERENCE_COLUMN: str = "diferencia_maxima"
 ACTIVE_DAYS_PER_USER_COLUMN: str = "dias_activos_por_usuario"
 ENTRIES_PER_ACTIVE_USER_COLUMN: str = "ingresos_por_usuario_activo"
 INTERACTIONS_PER_ACTIVE_USER_COLUMN: str = "interacciones_por_usuario_activo"
@@ -238,7 +231,6 @@ DISTRIBUTION_TO_COLUMN: str = "hasta"
 PERCENTAGE_COLUMN: str = "porcentaje"
 CONDITION_COLUMN: str = "condicion"
 INDICATOR_COLUMN: str = "indicador"
-VALUE_COLUMN: str = "valor"
 
 # --- Matrícula y alertas
 ENROLLED_ACTIVE_COLUMN: str = "matriculados_activos"
@@ -285,13 +277,6 @@ CONDITIONS: List[str] = [CONDITION_PROMOTED, CONDITION_REGULAR, CONDITION_FREE]
 GROUPS: List[str] = CONDITIONS + [CONDITION_NOT_PRESENTED]
 INDICATORS: List[str] = [ACTIVE_DAYS_COLUMN, ENTRIES_COLUMN, ACTIVE_WEEKS_COLUMN, MATERIAL_INTERACTIONS_COLUMN, FORUM_INTERACTIONS_COLUMN]
 SITUATIONS: List[str] = [CONDITION_PROMOTED, CONDITION_REGULAR, CONDITION_FREE, CONDITION_NOT_PRESENTED, CONDITION_DROPPED]
-SITUATION_COLORS: Dict[str, str] = {
-    CONDITION_PROMOTED: "#6B8F71",
-    CONDITION_REGULAR: "#E0A458",
-    CONDITION_FREE: "#B5523B",
-    CONDITION_NOT_PRESENTED: "#8A9BA8",
-    CONDITION_DROPPED: "#4A5A64",
-}
 
 TYPE_NAVIGATION: str = "Navegación"
 TYPE_STUDY_MATERIAL: str = "Material de estudio"
@@ -329,37 +314,6 @@ TYPE_BY_SECTION: Dict[str, str] = {
 # =============================================================================
 # 7. CLAVES DE LOS RESULTADOS DE LOS KPIs
 # =============================================================================
-KPI_GENERAL_AVERAGE: str = "promedio_general"
-KPI_AVERAGE_BY_TYPE: str = "promedio_por_tipo"
-KPI_GRADE_DISTRIBUTION: str = "distribucion_notas"
-KPI_ACADEMIC_CONDITION: str = "condicion_academica"
-KPI_COMPARISON: str = "comparacion"
-KPI_PARTICIPATION_VS_GRADES: str = "participacion_vs_notas"
-KPI_PARTICIPATION_CORRELATION: str = "correlacion_participacion"
-KPI_PARTICIPATION_TREND: str = "tendencia_participacion"
-KPI_PARTICIPATION_BRACKETS: str = "tramos_participacion"
-KPI_CORRELATION_TEST_ALL: str = "prueba_correlacion_todos"
-KPI_CORRELATION_TEST_PRESENTED: str = "prueba_correlacion_presentados"
-KPI_TIME_BY_CONDITION: str = "tiempo_por_condicion"
-KPI_TRACEABILITY_VS_GRADES: str = "trazabilidad_vs_notas"
-KPI_TRACEABILITY_CORRELATIONS_ALL: str = "correlaciones_trazabilidad_todos"
-KPI_TRACEABILITY_CORRELATIONS_PRESENTED: str = "correlaciones_trazabilidad_presentados"
-KPI_ACTIVE_STUDENTS: str = "estudiantes_activos"
-KPI_ACTIVE_BY_ENROLLMENT: str = "activos_por_matricula"
-KPI_ACADEMIC_SITUATION: str = "situacion_academica"
-KPI_ACADEMIC_SITUATION_SUMMARY: str = "situacion_academica_resumen"
-KPI_AVERAGE_SESSIONS: str = "sesiones_promedio"
-KPI_AVERAGE_TIME: str = "tiempo_promedio"
-KPI_COVERAGE: str = "cobertura"
-KPI_ACTIVE_VS_INACTIVE: str = "activos_vs_inactivos"
-KPI_WEEKLY_ENTRY_FREQUENCY: str = "frecuencia_ingreso_semanal"
-KPI_MONTHLY_ENTRY_FREQUENCY: str = "frecuencia_ingreso_mensual"
-KPI_DAILY_INTERACTIONS: str = "interacciones_diarias"
-KPI_INTERACTIONS_SUMMARY: str = "interacciones_resumen"
-KPI_INTERACTIONS_BY_WEEKDAY: str = "interacciones_por_dia_semana"
-KPI_INTERACTIONS_BY_TYPE: str = "interacciones_por_tipo"
-KPI_INTERACTIONS_BY_ACTION: str = "interacciones_por_accion"
-KPI_ACTIVITY_BY_DAY_AND_SLOT: str = "actividad_dia_franja"
 
 # =============================================================================
 # 8. PARÁMETROS DE LOS KPIs
@@ -451,7 +405,6 @@ VALUE_KEY: str = "value"
 
 # --- Claves de los diccionarios que devuelven los build_all() de cada pantalla
 CARDS_KEY: str = "cards"
-ACTIVE_INACTIVE_KEY: str = "active_inactive"
 DISTRIBUTION_KEY: str = "distribution"
 TREND_KEY: str = "trend"
 CONTEXT_KEY: str = "context"
@@ -459,7 +412,6 @@ CONTEXT_ENROLLED_PARTICIPATION_KEY: str = "enrolled_participation"
 CONTEXT_ENROLLMENT_CROSS_KEY: str = "enrollment_cross"
 CONTEXT_GRADES_TABLE_KEY: str = "grades_table"
 CONTEXT_SESSIONS_TABLE_KEY: str = "sessions_table"
-ENROLLED_VS_ACTIVE_KEY: str = "enrolled_vs_active"
 NOT_ENROLLED_KEY: str = "not_enrolled"
 NO_PARTICIPATION_KEY: str = "no_participation"
 ALERTS_KEY: str = "alerts"
@@ -595,27 +547,3 @@ CONDITION_TRAFFIC_COLORS: Dict[str, str] = {
 # =============================================================================
 # 11. TEXTOS Y COLORES DE LOS GRÁFICOS ESTÁTICOS (MATPLOTLIB) DE LOS KPIs
 # =============================================================================
-STATIC_PRIMARY_COLOR: str = "#1F5C6B"
-STATIC_NOT_PRESENTED_COLOR: str = "#B5523B"
-STATIC_TREND_COLOR: str = "#E0A458"
-STATIC_BOX_COLOR: str = "#8FB8C2"
-STATIC_PRESENTED_LABEL: str = "Se presentó"
-STATIC_GRADE_PERCENT_LABEL: str = "Nota (% del máximo posible)"
-STATIC_HISTOGRAM_TITLE: str = "Distribución de notas por asignatura"
-STATIC_TIME_HOURS_LABEL: str = "Tiempo en la plataforma (horas)"
-STATIC_TIME_VS_GRADE_TITLE: str = "Tiempo en la plataforma vs. nota"
-STATIC_TIME_BY_CONDITION_TITLE: str = "Tiempo de conexión según la condición académica"
-STATIC_TRACEABILITY_VS_GRADE_TITLE: str = "Trazabilidad vs. nota (* = p < 0,05)"
-STATIC_SPEARMAN_LABEL: str = "Correlación de Spearman con la nota"
-STATIC_SITUATION_PERCENT_LABEL: str = "Porcentaje de matriculados"
-STATIC_SITUATION_TITLE: str = "Situación académica de los matriculados"
-STATIC_STUDENTS_LABEL: str = "Estudiantes"
-STATIC_MIN_LABEL_PERCENT: int = 4
-STATIC_SIGNIFICANT_MARK: str = "*"
-STATIC_PERCENT_LABEL_TEMPLATE: str = "{value:.0f} %"
-STATIC_CORRELATION_TITLE_TEMPLATE: str = "{subject} (r = {r:.2f}, n = {n})"
-STATIC_BOXPLOT_LABEL_TEMPLATE: str = "{group}\n(n={n})"
-STATIC_HEATMAP_CELL_TEMPLATE: str = "{value:.2f}{mark}"
-STATIC_INDICATOR_TITLE_TEMPLATE: str = "{indicator} vs. nota"
-STATIC_FIGURE_DPI: int = 150
-STATIC_TITLE_X_POSITION: float = 0.01

@@ -115,7 +115,6 @@ def line_chart(table: pd.DataFrame, x_column: str, y_column: str, title: str, x_
 def multi_line_chart(series: Dict[str, pd.DataFrame], x_column: str, y_column: str, title: str, x_title: str, y_title: str) -> go.Figure:
     figure: go.Figure = go.Figure()
     mode: str = "lines+markers"
-    line: Dict[str, int] = {"width": 3}
     
     for name, table in series.items():
         x_values: List[Any] = table[x_column].tolist()

@@ -4,10 +4,7 @@ Entrada : data/integrado/{calificaciones,cruce_matriculados}_integrado.parquet
           (generados por integracion.ipynb). La carpeta data/ se busca en la raíz del proyecto.
 Salida  : DataFrames de pandas (no se escriben archivos).
 
-Las funciones de KPI son puras (reciben y devuelven DataFrames). Para calcular todo de una vez:
-    from kpis_calificaciones import calcular_kpis_calificaciones
-    kpis = calcular_kpis_calificaciones()
-    kpis["promedio_general"]   # DataFrame
+Las funciones de KPI son puras (reciben y devuelven DataFrames).
 
 Criterio de nota: cada estudiante tiene una nota en porcentaje (0-100) calculada como
     suma(nota_obtenida) / suma(nota_max) * 100
@@ -33,29 +30,19 @@ from constants import (
     CONDITION_PROMOTED,
     CONDITION_REGULAR,
     CUMULATIVE_SUBJECT_KEYS,
-    DATA_PATH,
     DEFAULT_GRADE_BIN_WIDTH,
     DIFF_VS_GENERAL_COLUMN,
     DISTRIBUTION_FROM_COLUMN,
     DISTRIBUTION_TO_COLUMN,
     ENROLLED_COLUMN,
-    ENROLLMENT_CROSS_FILE,
     EVALUATION_PROGRESS_COLUMN,
     EVALUATION_TYPE_COLUMN,
     FREE_PERCENT_COLUMN,
-    GRADES_FILE,
     GRADE_PERCENT_COLUMN,
     GRADE_SCALE_MAX,
     GRADE_TOLERANCE,
-    INDICATOR_COLUMN,
     INSTRUMENT_COUNT_COLUMN,
-    INTEGRATED_FOLDER_NAME,
     KEY_COLUMNS,
-    KPI_ACADEMIC_CONDITION,
-    KPI_AVERAGE_BY_TYPE,
-    KPI_COMPARISON,
-    KPI_GENERAL_AVERAGE,
-    KPI_GRADE_DISTRIBUTION,
     MAXIMUM_COLUMN,
     MEDIAN_PERCENT_COLUMN,
     OBTAINED_COLUMN,
@@ -70,21 +57,12 @@ from constants import (
     RANGE_SOURCE_COLUMN,
     REGULAR_PERCENT_COLUMN,
     ROUND_DECIMALS,
-    STATIC_FIGURE_DPI,
-    STATIC_GRADE_PERCENT_LABEL,
-    STATIC_HISTOGRAM_TITLE,
-    STATIC_PRIMARY_COLOR,
-    STATIC_STUDENTS_LABEL,
-    STATIC_TITLE_X_POSITION,
     STD_PERCENT_COLUMN,
     STUDENTS_COLUMN,
     SUBJECT_COLUMN,
     USER_COLUMN,
-    VALUE_COLUMN,
 )
 
-# src/kpis/kpis_calificaciones.py -> raíz del proyecto -> data/
-DATOS_POR_DEFECTO = DATA_PATH
 
 CLAVES = KEY_COLUMNS
 
@@ -206,32 +184,6 @@ def distribucion_de_notas(calificaciones: pd.DataFrame, cruce: pd.DataFrame,
     return conteo[[SUBJECT_COLUMN, RANGE_SOURCE_COLUMN, DISTRIBUTION_FROM_COLUMN, DISTRIBUTION_TO_COLUMN, STUDENTS_COLUMN, PERCENTAGE_COLUMN]]
 
 
-def graficar_histograma(distribucion: pd.DataFrame, ruta: Path | None = None):
-    """Dibuja un histograma por asignatura a partir de `distribucion_de_notas` (imagen estática).
-
-    Usa matplotlib, que se importa acá para que el resto del módulo no lo requiera. Si se
-    indica `ruta`, guarda la imagen. Devuelve la figura.
-    """
-    import matplotlib.pyplot as plt
-
-    materias = distribucion[SUBJECT_COLUMN].unique()
-    fig, ejes = plt.subplots(1, len(materias), figsize=(5 * len(materias), 4), sharey=True, squeeze=False)
-    for eje, materia in zip(ejes[0], materias):
-        t = distribucion[distribucion[SUBJECT_COLUMN] == materia]
-        barras = eje.bar(t[RANGE_SOURCE_COLUMN], t[STUDENTS_COLUMN], color=STATIC_PRIMARY_COLOR, width=0.96)
-        eje.bar_label(barras, padding=2, fontsize=8)
-        eje.set_title(materia.capitalize())
-        eje.set_xlabel(STATIC_GRADE_PERCENT_LABEL)
-        eje.tick_params(axis="x", rotation=45)
-        eje.spines[["top", "right"]].set_visible(False)
-    ejes[0][0].set_ylabel(STATIC_STUDENTS_LABEL)
-    fig.suptitle(STATIC_HISTOGRAM_TITLE, x=STATIC_TITLE_X_POSITION, ha="left")
-    fig.tight_layout()
-    if ruta is not None:
-        fig.savefig(ruta, dpi=STATIC_FIGURE_DPI, bbox_inches="tight")
-    return fig
-
-
 # ----------------------------------------------------------------------------
 # KPI 3: promocionados, regulares y libres
 # ----------------------------------------------------------------------------
@@ -310,34 +262,3 @@ def comparar_asignaturas(calificaciones: pd.DataFrame, cruce: pd.DataFrame,
     columnas = [STUDENTS_COLUMN, AVERAGE_PERCENT_COLUMN, MEDIAN_PERCENT_COLUMN, STD_PERCENT_COLUMN, DIFF_VS_GENERAL_COLUMN,
                 PROMOTED_PERCENT_COLUMN, REGULAR_PERCENT_COLUMN, FREE_PERCENT_COLUMN, EVALUATION_PROGRESS_COLUMN]
     return res[columnas].round(ROUND_DECIMALS).reset_index()
-
-
-def comparacion_en_formato_largo(comparacion: pd.DataFrame,
-                                 indicadores: list[str] | None = None) -> pd.DataFrame:
-    """Pasa la tabla comparativa a formato largo (materia, indicador, valor) para graficar.
-
-    Para el gráfico de barras agrupadas de Streamlit:
-    `grouped_bar_chart({i: g for i, g in largo.groupby("indicador")}, "materia", "valor", ...)`.
-    """
-    indicadores = indicadores or [AVERAGE_PERCENT_COLUMN, PROMOTED_PERCENT_COLUMN, REGULAR_PERCENT_COLUMN, FREE_PERCENT_COLUMN]
-    return comparacion.melt(id_vars=SUBJECT_COLUMN, value_vars=indicadores, var_name=INDICATOR_COLUMN, value_name=VALUE_COLUMN)
-
-
-# ----------------------------------------------------------------------------
-# Todos los KPI
-# ----------------------------------------------------------------------------
-def calcular_kpis_calificaciones(datos=None, ancho_bin: int = DEFAULT_GRADE_BIN_WIDTH, matriculados: bool = True) -> dict[str, pd.DataFrame]:
-    """Lee los datos integrados y devuelve los KPI de calificaciones como DataFrames.
-
-    Claves: promedio_general, promedio_por_tipo, distribucion_notas, condicion_academica, comparacion.
-    """
-    integrado = (Path(datos) if datos else DATOS_POR_DEFECTO) / INTEGRATED_FOLDER_NAME
-    calificaciones = pd.read_parquet(integrado / GRADES_FILE)
-    cruce = pd.read_parquet(integrado / ENROLLMENT_CROSS_FILE)
-    return {
-        KPI_GENERAL_AVERAGE: promedio_general_por_asignatura(calificaciones, cruce, matriculados),
-        KPI_AVERAGE_BY_TYPE: promedio_por_tipo_evaluacion(calificaciones, cruce, matriculados),
-        KPI_GRADE_DISTRIBUTION: distribucion_de_notas(calificaciones, cruce, ancho_bin, matriculados),
-        KPI_ACADEMIC_CONDITION: condicion_academica(calificaciones, cruce, matriculados),
-        KPI_COMPARISON: comparar_asignaturas(calificaciones, cruce, matriculados),
-    }

@@ -4,10 +4,7 @@ Entrada : data/integrado/{trazabilidad,participacion,cruce_matriculados}_integra
           (generados por integracion.ipynb). La carpeta data/ se busca en la raíz del proyecto.
 Salida  : DataFrames de pandas (no se escriben archivos).
 
-Las funciones de KPI son puras (reciben y devuelven DataFrames). Para calcular todo de una vez:
-    from kpis_participacion import calcular_kpis_participacion
-    kpis = calcular_kpis_participacion()
-    kpis["sesiones_promedio"]   # DataFrame
+Las funciones de KPI son puras (reciben y devuelven DataFrames).
 
 La justificación y los controles de sensibilidad de cada KPI están en participacion.ipynb.
 """
@@ -29,29 +26,21 @@ from constants import (
     AVERAGE_MINUTES_ENROLLED_COLUMN,
     COVERAGE_PERCENT_COLUMN,
     CUTOFF_DATE_COLUMN,
-    DATA_PATH,
     ENROLLED_COLUMN,
     ENROLLED_COUNT_COLUMN,
-    ENROLLMENT_CROSS_FILE,
     ESTIMATED_USAGE_MINUTES_COLUMN,
     EVENT_DATE_COLUMN,
     INACTIVE_COUNT_COLUMN,
     INACTIVE_PERCENT_COLUMN,
-    INTEGRATED_FOLDER_NAME,
     INTERACTIONS_COLUMN,
     IS_ENROLLED_COLUMN,
     KEY_COLUMNS,
-    KPI_ACTIVE_VS_INACTIVE,
-    KPI_AVERAGE_SESSIONS,
-    KPI_AVERAGE_TIME,
-    KPI_COVERAGE,
     LAST_INTERACTION_COLUMN,
     MEDIAN_ENROLLED_COLUMN,
     MEDIAN_MINUTES_ENROLLED_COLUMN,
     NEW_SESSION_COLUMN,
     NOT_ENROLLED_WITH_ACTIVITY_COLUMN,
     PARTICIPATES_COLUMN,
-    PARTICIPATION_FILE,
     PARTICIPATION_THRESHOLD,
     PERCENT_FACTOR,
     ROUND_DECIMALS,
@@ -61,13 +50,10 @@ from constants import (
     SUBJECT_COLUMN,
     TIME_MINUTES_COLUMN,
     TOTAL_STUDENTS_COLUMN,
-    TRACEABILITY_FILE,
     USER_COLUMN,
     WITH_PARTICIPATION_COLUMN,
 )
 
-# src/kpis/kpis_participacion.py -> raíz del proyecto -> data/
-DATOS_POR_DEFECTO = DATA_PATH
 
 CLAVES = KEY_COLUMNS
 
@@ -249,25 +235,3 @@ def estudiantes_activos_vs_inactivos(participacion: pd.DataFrame, cruce: pd.Data
     resumen[INACTIVE_PERCENT_COLUMN] = (PERCENT_FACTOR - resumen[ACTIVE_PERCENT_COLUMN]).round(ROUND_DECIMALS)
     resumen[CUTOFF_DATE_COLUMN] = fecha_corte.normalize()
     return resumen.reset_index()
-
-
-# ----------------------------------------------------------------------------
-# Todos los KPI
-# ----------------------------------------------------------------------------
-def calcular_kpis_participacion(datos=None, umbral_sesion: pd.Timedelta = UMBRAL_SESION,
-                                umbral_participacion: float = UMBRAL_PARTICIPACION,
-                                dias_actividad: int = DIAS_ACTIVIDAD) -> dict[str, pd.DataFrame]:
-    """Lee los datos integrados y devuelve los KPI de participación como DataFrames.
-
-    Claves: sesiones_promedio, tiempo_promedio, cobertura, activos_vs_inactivos.
-    """
-    integrado = (Path(datos) if datos else DATOS_POR_DEFECTO) / INTEGRATED_FOLDER_NAME
-    trazabilidad = pd.read_parquet(integrado / TRACEABILITY_FILE, columns=CLAVES + [EVENT_DATE_COLUMN])
-    participacion = pd.read_parquet(integrado / PARTICIPATION_FILE)
-    cruce = pd.read_parquet(integrado / ENROLLMENT_CROSS_FILE)
-    return {
-        KPI_AVERAGE_SESSIONS: sesiones_promedio_por_estudiante(trazabilidad, cruce, umbral_sesion),
-        KPI_AVERAGE_TIME: tiempo_promedio_en_plataforma(participacion, cruce),
-        KPI_COVERAGE: cobertura_participacion(participacion, cruce, umbral_participacion),
-        KPI_ACTIVE_VS_INACTIVE: estudiantes_activos_vs_inactivos(participacion, cruce, dias_actividad),
-    }
