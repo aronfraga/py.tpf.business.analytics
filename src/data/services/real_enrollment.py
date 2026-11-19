@@ -212,7 +212,9 @@ def build_all() -> Dict[str, Dict[str, Any]]:
             cross=cross, flag_column=const.FLAG_NOT_ENROLLED_ACTIVE, subject_key=subject_key)
         no_participation_users: List[str] = select_users(
             cross=cross, flag_column=const.FLAG_ENROLLED_WITHOUT_ACTIVITY, subject_key=subject_key)
-        not_enrolled[subject] = build_not_enrolled_table(users=not_enrolled_users, subject_key=subject_key, participation_index=participation_index, sessions=sessions)
+        not_enrolled_table: pd.DataFrame = build_not_enrolled_table(
+            users=not_enrolled_users, subject_key=subject_key, participation_index=participation_index, sessions=sessions)
+        not_enrolled[subject] = not_enrolled_table.assign(subject=subject)
         no_participation_table: pd.DataFrame = build_no_participation_table(users=no_participation_users, subject_key=subject_key, participation_index=participation_index, enrollment_dates=enrollment_dates)
         no_participation[subject] = no_participation_table.assign(subject=subject)
         alerts[subject] = build_alerts_table(
