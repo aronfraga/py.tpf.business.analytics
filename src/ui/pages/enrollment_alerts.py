@@ -1,5 +1,4 @@
 from typing import Any, Dict, List
-from streamlit.delta_generator import DeltaGenerator
 from data.services.real_enrollment import build_all
 from ui.components.cards import card_row
 from ui.components.filters import selector
@@ -37,17 +36,11 @@ def show() -> None:
     detail_section: str = "Detalle"
     section_title(detail_section)
     
-    column_count: int = 2
-    not_enrolled_column: DeltaGenerator
-    no_participation_column: DeltaGenerator
-    not_enrolled_column, no_participation_column = st.columns(column_count)
     not_enrolled_title: str = "No inscriptos con alguna actividad"
     no_participation_title: str = "Inscriptos sin participación"
     
-    with not_enrolled_column:
-        table(not_enrolled, not_enrolled_title, const.NOT_ENROLLED_ACTIVE_LABELS)
-    with no_participation_column:
-        table(no_participation, no_participation_title, const.ENROLLED_NO_PARTICIPATION_LABELS)
+    table(not_enrolled, not_enrolled_title, const.NOT_ENROLLED_ACTIVE_LABELS)
+    table(no_participation, no_participation_title, const.ENROLLED_NO_PARTICIPATION_LABELS)
     
     alerts_section: str = "Alertas"
     section_title(alerts_section)
