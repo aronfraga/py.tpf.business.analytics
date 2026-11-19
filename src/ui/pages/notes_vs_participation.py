@@ -1,49 +1,57 @@
 from typing import Dict, List
+from streamlit.delta_generator import DeltaGenerator
+from data.services.real_correlation import build_all
+from ui.components.cards import kpi_card
+from ui.components.charts import scatter_by_group, show_figure
+from ui.components.filters import selector
+from ui.components.tables import table
+from ui.components.texts import section_title
+from constants import RISK_LABELS, SUBJECT_OPTIONS
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
-from streamlit.delta_generator import DeltaGenerator
-from data.dummy_common import SUBJECTS
-from data.dummy_correlation import CORRELATION, CORRELATION_INTERPRETATION, SCATTER, TREND_LINE
-from ui.components.cards import kpi_card
-from ui.components.charts import scatter_with_trend, show_figure
-from ui.components.filters import selector
-from ui.components.texts import interpretation, section_title
 
 def show() -> None:
     page_title: str = "Notas vs Participación"
     st.title(page_title)
-    
+
+    tables: Dict[str, Dict[str, object]] = build_all()
+
     subject_label: str = "Asignatura"
     subject_key: str = "correlation_subject"
-    subject: str = selector(subject_label, SUBJECTS, subject_key)
-    points: pd.DataFrame = SCATTER[subject]
-    trend: pd.DataFrame = TREND_LINE[subject]
-    card: Dict[str, str] = CORRELATION[subject]
-    text: str = CORRELATION_INTERPRETATION[subject]
-    section: str = "Relación entre sesiones y notas"
-    
+    subject: str = selector(subject_label, SUBJECT_OPTIONS, subject_key)
+    points: pd.DataFrame = tables["scatter"][subject]
+    trend: pd.DataFrame = tables["trend"][subject]
+    card: Dict[str, str] = tables["card"][subject]
+    risk: pd.DataFrame = tables["risk"][subject]
+    section: str = "Relación entre tiempo en la plataforma y notas"
+
     section_title(section)
-    
+
     widths: List[int] = [3, 1]
     chart_column: DeltaGenerator
     card_column: DeltaGenerator
-    
+
     chart_column, card_column = st.columns(widths)
-    
-    x_column: str = "sessions"
+
+    x_column: str = "time_min"
     y_column: str = "grade"
-    chart_title: str = "Notas vs. sesiones"
-    x_title: str = "Sesiones"
+    group_column: str = "group"
+    chart_title: str = "Notas vs. tiempo en la plataforma"
+    x_title: str = "Tiempo en la plataforma (min)"
     y_title: str = "Nota"
-    
-    figure: go.Figure = scatter_with_trend(points, trend, x_column, y_column, chart_title, x_title, y_title)
-    
+
+    figure: go.Figure = scatter_by_group(points, trend, x_column, y_column, group_column, chart_title, x_title, y_title)
+
     with chart_column:
         show_figure(figure)
     with card_column:
         kpi_card(card)
-    
-    interpretation(text)
+
+    risk_section: str = "Grupos de riesgo"
+    section_title(risk_section)
+
+    risk_title: str = "Estudiantes en riesgo"
+    table(risk, risk_title, RISK_LABELS)
 
 show()

@@ -1,22 +1,23 @@
+from typing import Dict
+from data.services.real_traceability import build_all
+from ui.components.charts import heatmap, horizontal_bar_chart, line_chart, show_figure
+from ui.components.filters import selector
+from ui.components.texts import section_title
+from constants import SUBJECT_OPTIONS
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
-from data.dummy_common import SUBJECTS
-from data.dummy_traceability import ACTIVITY_HEATMAP, INTERACTIONS_BY_ACTION, TIMELINE, TRACEABILITY_INTERPRETATION
-from ui.components.charts import heatmap, horizontal_bar_chart, line_chart, show_figure
-from ui.components.filters import selector
-from ui.components.texts import interpretation, section_title
 
 def show() -> None:
     page_title: str = "Trazabilidad"
     st.title(page_title)
+    tables: Dict[str, Dict[str, pd.DataFrame]] = build_all()
     subject_label: str = "Asignatura"
     subject_key: str = "traceability_subject"
-    subject: str = selector(subject_label, SUBJECTS, subject_key)
-    by_action: pd.DataFrame = INTERACTIONS_BY_ACTION[subject]
-    heat: pd.DataFrame = ACTIVITY_HEATMAP[subject]
-    timeline: pd.DataFrame = TIMELINE[subject]
-    text: str = TRACEABILITY_INTERPRETATION[subject]
+    subject: str = selector(subject_label, SUBJECT_OPTIONS, subject_key)
+    by_action: pd.DataFrame = tables["by_action"][subject]
+    heat: pd.DataFrame = tables["heatmap"][subject]
+    timeline: pd.DataFrame = tables["timeline"][subject]
     interactions_section: str = "Interacciones"
     section_title(interactions_section)
     
@@ -24,7 +25,8 @@ def show() -> None:
     category_column: str = "action"
     actions_title: str = "Interacciones por tipo de acción"
     actions_x_title: str = "Interacciones"
-    actions_figure: go.Figure = horizontal_bar_chart(by_action, value_column, category_column, actions_title, actions_x_title)
+    actions_figure: go.Figure = horizontal_bar_chart(
+        by_action, value_column, category_column, actions_title, actions_x_title)
     show_figure(actions_figure)
     
     weekly_section: str = "Patrón semanal"
@@ -44,9 +46,8 @@ def show() -> None:
     timeline_title: str = "Interacciones en el tiempo"
     date_title: str = "Fecha"
     timeline_y_title: str = "Interacciones"
-    timeline_figure: go.Figure = line_chart(timeline, date_column, interactions_column, timeline_title, date_title, timeline_y_title) 
+    timeline_figure: go.Figure = line_chart(
+        timeline, date_column, interactions_column, timeline_title, date_title, timeline_y_title) 
     show_figure(timeline_figure)
-    
-    interpretation(text)
 
 show()
