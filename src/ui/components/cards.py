@@ -1,6 +1,6 @@
 from typing import Dict, List
-import streamlit as st
 from streamlit.delta_generator import DeltaGenerator
+import streamlit as st
 
 def kpi_card(card: Dict[str, str]) -> None:
     title: str = card["title"]

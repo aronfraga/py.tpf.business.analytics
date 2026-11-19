@@ -1,7 +1,7 @@
 from typing import Any, Dict, List
-import streamlit as st
 from streamlit.navigation.page import StreamlitPage
 from ui.components.styles import inject_styles
+import streamlit as st
 
 GENERAL_PAGE: Dict[str, Any] = {"path": "ui/pages/general.py", "title": "General", "icon": ":material/dashboard:", "is_default": True}
 PARTICIPATION_PAGE: Dict[str, Any] = {"path": "ui/pages/participation.py", "title": "Participación", "icon": ":material/groups:", "is_default": False}

@@ -1,9 +1,9 @@
 from typing import Any, Dict, List, Optional
+from ui.components.template import (
+    GROUP_COLORS, GROUP_ORDER, HEATMAP_SCALE, SUBJECT_COLORS, TEMPLATE, TRANSPARENT, TREND_COLOR)
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
-
-from ui.components.template import HEATMAP_SCALE, TEMPLATE, TRANSPARENT
 
 def apply_template(figure: go.Figure, title: str, x_title: str, y_title: str) -> go.Figure:
     figure.layout.template = TEMPLATE
@@ -25,6 +25,26 @@ def bar_chart(table: pd.DataFrame, x_column: str, y_column: str, title: str, x_t
     figure: go.Figure = go.Figure(data=traces)
     result: go.Figure = apply_template(figure, title, x_title, y_title)
     
+    return result
+
+def bar_chart_by_subject(table: pd.DataFrame, x_column: str, y_column: str, subject_column: str, title: str, x_title: str, y_title: str) -> go.Figure:
+    figure: go.Figure = go.Figure()
+    subjects: List[Any] = table[subject_column].drop_duplicates().tolist()
+
+    for subject in subjects:
+        is_subject: pd.Series = table[subject_column] == subject
+        subject_rows: pd.DataFrame = table.loc[is_subject]
+        names: List[Any] = subject_rows[x_column].tolist()
+        values: List[Any] = subject_rows[y_column].tolist()
+        subject_labels: List[Any] = [subject] * len(names)
+        x_values: List[Any] = [subject_labels, names]
+        subject_marker: Dict[str, Any] = {"color": SUBJECT_COLORS.get(subject)}
+        trace: go.Bar = go.Bar(name=subject, x=x_values, y=values, text=values, textposition="outside", cliponaxis=False, marker=subject_marker)
+        figure.add_trace(trace)
+
+    result: go.Figure = apply_template(figure, title, x_title, y_title)
+    result.update_layout(showlegend=False)
+
     return result
 
 def horizontal_bar_chart(table: pd.DataFrame, value_column: str, category_column: str, title: str, x_title: str) -> go.Figure:
@@ -56,7 +76,8 @@ def grouped_bar_chart(series: Dict[str, pd.DataFrame], x_column: str, y_column: 
     for name, table in series.items():
         x_values: List[Any] = table[x_column].tolist()
         y_values: List[Any] = table[y_column].tolist()
-        trace: go.Bar = go.Bar(name=name, x=x_values, y=y_values)
+        series_marker: Dict[str, Any] = {"color": SUBJECT_COLORS.get(name)}
+        trace: go.Bar = go.Bar(name=name, x=x_values, y=y_values, marker=series_marker)
         figure.add_trace(trace)
     
     bar_mode: str = "group"
@@ -94,28 +115,38 @@ def line_chart(table: pd.DataFrame, x_column: str, y_column: str, title: str, x_
 def multi_line_chart(series: Dict[str, pd.DataFrame], x_column: str, y_column: str, title: str, x_title: str, y_title: str) -> go.Figure:
     figure: go.Figure = go.Figure()
     mode: str = "lines+markers"
-    line: Dict[str, int] = {"width": 3}
     
     for name, table in series.items():
         x_values: List[Any] = table[x_column].tolist()
         y_values: List[Any] = table[y_column].tolist()
-        trace: go.Scatter = go.Scatter(name=name, x=x_values, y=y_values, mode=mode, line=line)
+        series_line: Dict[str, Any] = {"width": 3, "color": SUBJECT_COLORS.get(name)}
+        trace: go.Scatter = go.Scatter(name=name, x=x_values, y=y_values, mode=mode, line=series_line)
         figure.add_trace(trace)
     
     result: go.Figure = apply_template(figure, title, x_title, y_title)
     return result
 
-def donut_chart(table: pd.DataFrame, label_column: str, value_column: str, title: str) -> go.Figure:
+def donut_chart(table: pd.DataFrame, label_column: str, value_column: str, title: str, colors: Optional[Dict[str, str]] = None, center_label: Optional[str] = None) -> go.Figure:
     labels: List[Any] = table[label_column].tolist()
     values: List[Any] = table[value_column].tolist()
     hole: float = 0.55
     sort: bool = False
-    trace: go.Pie = go.Pie(labels=labels, values=values, hole=hole, sort=sort)
+    marker: Optional[Dict[str, Any]] = None
+
+    if colors is not None:
+        marker = {"colors": [colors.get(label) for label in labels]}
+
+    trace: go.Pie = go.Pie(labels=labels, values=values, hole=hole, sort=sort, marker=marker)
     traces: List[go.Pie] = [trace]
     figure: go.Figure = go.Figure(data=traces)
     figure.layout.template = TEMPLATE
     figure.update_layout(title_text=title)
-    
+
+    if center_label is not None:
+        total: int = int(sum(values))
+        center_text: str = f"<b style='font-size:30px'>{total}</b><br>{center_label}"
+        figure.add_annotation(text=center_text, x=0.5, y=0.5, showarrow=False, font={"size": 14, "color": "#1E2A32"})
+
     return figure
 
 def heatmap(table: pd.DataFrame, title: str, x_title: str, y_title: str) -> go.Figure:
@@ -127,7 +158,8 @@ def heatmap(table: pd.DataFrame, title: str, x_title: str, y_title: str) -> go.F
     colorbar_title_text: str = "Total"
     colorbar_title: Dict[str, str] = {"text": colorbar_title_text}
     colorbar: Dict[str, Any] = {"thickness": 12, "title": colorbar_title}
-    trace: go.Heatmap = go.Heatmap(z=matrix, x=columns, y=rows, colorscale=HEATMAP_SCALE, xgap=gap, ygap=gap, colorbar=colorbar)
+    trace: go.Heatmap = go.Heatmap(
+        z=matrix, x=columns, y=rows, colorscale=HEATMAP_SCALE, xgap=gap, ygap=gap, colorbar=colorbar)
     traces: List[go.Heatmap] = [trace]
     figure: go.Figure = go.Figure(data=traces)
     autorange: str = "reversed"
@@ -136,24 +168,33 @@ def heatmap(table: pd.DataFrame, title: str, x_title: str, y_title: str) -> go.F
     
     return result
 
-def scatter_with_trend(points: pd.DataFrame, trend: pd.DataFrame, x_column: str, y_column: str, title: str, x_title: str, y_title: str) -> go.Figure:
-    points_x: List[Any] = points[x_column].tolist()
-    points_y: List[Any] = points[y_column].tolist()
+def scatter_by_group(points: pd.DataFrame, trend: pd.DataFrame, x_column: str, y_column: str, group_column: str, title: str, x_title: str, y_title: str) -> go.Figure:
+    figure: go.Figure = go.Figure()
+    points_mode: str = "markers"
+
+    for group in GROUP_ORDER:
+        is_group: pd.Series = points[group_column] == group
+        group_points: pd.DataFrame = points.loc[is_group]
+        group_x: List[Any] = group_points[x_column].tolist()
+        group_y: List[Any] = group_points[y_column].tolist()
+        group_color: str = GROUP_COLORS[group]
+        group_marker: Dict[str, Any] = {"size": 11, "opacity": 0.85, "color": group_color}
+        group_trace: go.Scatter = go.Scatter(name=group, x=group_x, y=group_y, mode=points_mode, marker=group_marker)
+        figure.add_trace(group_trace)
+
     trend_x: List[Any] = trend[x_column].tolist()
     trend_y: List[Any] = trend[y_column].tolist()
-    points_name: str = "Estudiantes"
-    points_mode: str = "markers"
-    points_marker: Dict[str, Any] = {"size": 11, "opacity": 0.85}
-    points_trace: go.Scatter = go.Scatter(name=points_name, x=points_x, y=points_y, mode=points_mode, marker=points_marker)
     trend_name: str = "Tendencia"
     trend_mode: str = "lines"
-    trend_line: Dict[str, Any] = {"width": 3, "dash": "dash", "color": "#E0A458"}
+    trend_line: Dict[str, Any] = {"width": 3, "dash": "dash", "color": TREND_COLOR}
     trend_trace: go.Scatter = go.Scatter(name=trend_name, x=trend_x, y=trend_y, mode=trend_mode, line=trend_line)
-    traces: List[go.Scatter] = [points_trace, trend_trace]
-    figure: go.Figure = go.Figure(data=traces)
-    
+    figure.add_trace(trend_trace)
+
+    legend_position: Dict[str, Any] = {"y": -0.32}
+    bottom_margin: Dict[str, int] = {"b": 110}
+    figure.update_layout(legend=legend_position, margin=bottom_margin)
     result: go.Figure = apply_template(figure, title, x_title, y_title)
-    
+
     return result
 
 def show_figure(figure: go.Figure) -> None:
