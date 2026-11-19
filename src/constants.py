@@ -435,7 +435,7 @@ DIRECTION_NEGATIVE: str = "negativa"
 CORRELATION_CARD_TITLE: str = "Correlación tiempo–nota (Pearson)"
 
 NOT_ENROLLED_ACTIVE_LABELS: Dict[str, str] = {
-    USER_TABLE_COLUMN: "Usuario",
+    USER_TABLE_COLUMN: "Estudiante",
     SESSIONS_COLUMN: "Sesiones",
     LAST_ACTIVITY_TABLE_COLUMN: "Última actividad",
 }

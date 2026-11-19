@@ -342,12 +342,14 @@ div[data-testid="stDataFrame"] {
   color: #FFFFFF;
   font-size: 0.85rem;
   font-weight: 700;
+  height: 4.5rem;
   letter-spacing: 0.04em;
   padding: 0.7rem 1rem;
   position: sticky;
   text-align: left;
   text-transform: uppercase;
   top: 0;
+  vertical-align: middle;
 }
 
 .colored-table td {
