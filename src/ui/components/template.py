@@ -1,8 +1,12 @@
 from typing import Any, Dict, List
 
 import plotly.graph_objects as go
+from constants import (
+    ALGEBRA,
+    ALGORITHMS,
+    PROBABILITY,
+)
 
-from data.real_common import ALGEBRA, ALGORITHMS, PROBABILITY
 
 PALETTE: List[str] = ["#1E5631", "#8B1E3F", "#4F7CAC", "#CE8A3D", "#3E7B4F", "#7F8C8D"]
 

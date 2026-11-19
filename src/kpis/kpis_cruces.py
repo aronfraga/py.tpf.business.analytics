@@ -21,11 +21,105 @@ Criterios comunes:
 
 La justificación y los controles de cada cruce están en cruce_participacion_notas.ipynb.
 """
+import sys
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 from scipy import stats
+_SRC_PATH = str(Path(__file__).resolve().parents[1])
+if _SRC_PATH not in sys.path:
+    sys.path.append(_SRC_PATH)
+from constants import (
+    ABSOLUTE_R_COLUMN,
+    ACTIVE_DAYS_COLUMN,
+    ACTIVE_WEEKS_COLUMN,
+    AVERAGE_GRADE_PERCENT_COLUMN,
+    AVERAGE_MINUTES_COLUMN,
+    BRACKET_COLUMN,
+    CONDITION_COLUMN,
+    CONDITION_NOT_PRESENTED,
+    CONFIDENCE_LEVEL,
+    CORRELATION_DECIMALS,
+    CORRELATION_TEST_DECIMALS,
+    DATA_PATH,
+    DAY_COLUMN,
+    ENROLLED_COLUMN,
+    ENROLLMENT_CROSS_FILE,
+    ENTRIES_COLUMN,
+    ENTRY_COLUMN,
+    EVENT_DATE_COLUMN,
+    FORUM_INTERACTIONS_COLUMN,
+    GRADES_FILE,
+    GRADE_PERCENT_COLUMN,
+    GRADE_SCALE_MAX,
+    GROUPS,
+    INACTIVITY_MINUTES,
+    INDICATORS,
+    INDICATOR_COLUMN,
+    INTEGRATED_FOLDER_NAME,
+    IS_FORUM_COLUMN,
+    IS_MATERIAL_COLUMN,
+    KEY_COLUMNS,
+    KPI_CORRELATION_TEST_ALL,
+    KPI_CORRELATION_TEST_PRESENTED,
+    KPI_PARTICIPATION_BRACKETS,
+    KPI_PARTICIPATION_CORRELATION,
+    KPI_PARTICIPATION_TREND,
+    KPI_PARTICIPATION_VS_GRADES,
+    KPI_TIME_BY_CONDITION,
+    KPI_TRACEABILITY_CORRELATIONS_ALL,
+    KPI_TRACEABILITY_CORRELATIONS_PRESENTED,
+    KPI_TRACEABILITY_VS_GRADES,
+    MATERIAL_INTERACTIONS_COLUMN,
+    MEDIAN_MINUTES_COLUMN,
+    MINUTES_PER_HOUR,
+    NOT_PRESENTED_LABEL,
+    PARTICIPATION_BRACKET_COUNT,
+    PARTICIPATION_FILE,
+    PEARSON_CI_HIGH_COLUMN,
+    PEARSON_CI_LOW_COLUMN,
+    PEARSON_COLUMN,
+    PEARSON_P_COLUMN,
+    PRESENTED_COLUMN,
+    P_VALUE_COLUMN,
+    P_VALUE_DECIMALS,
+    ROUND_DECIMALS,
+    SIGNIFICANCE_LEVEL,
+    SIGNIFICANT_COLUMN,
+    SLOPE_COLUMN,
+    SPEARMAN_COLUMN,
+    SPEARMAN_DECIMALS,
+    SPEARMAN_P_COLUMN,
+    STATIC_BOXPLOT_LABEL_TEMPLATE,
+    STATIC_BOX_COLOR,
+    STATIC_CORRELATION_TITLE_TEMPLATE,
+    STATIC_FIGURE_DPI,
+    STATIC_GRADE_PERCENT_LABEL,
+    STATIC_HEATMAP_CELL_TEMPLATE,
+    STATIC_INDICATOR_TITLE_TEMPLATE,
+    STATIC_NOT_PRESENTED_COLOR,
+    STATIC_PRESENTED_LABEL,
+    STATIC_PRIMARY_COLOR,
+    STATIC_SIGNIFICANT_MARK,
+    STATIC_SPEARMAN_LABEL,
+    STATIC_TIME_BY_CONDITION_TITLE,
+    STATIC_TIME_HOURS_LABEL,
+    STATIC_TIME_VS_GRADE_TITLE,
+    STATIC_TITLE_X_POSITION,
+    STATIC_TRACEABILITY_VS_GRADE_TITLE,
+    STATIC_TREND_COLOR,
+    STUDENTS_COLUMN,
+    SUBJECT_COLUMN,
+    TIME_FROM_MINUTES_COLUMN,
+    TIME_MINUTES_COLUMN,
+    TIME_TO_MINUTES_COLUMN,
+    TYPE_FORUMS,
+    TYPE_STUDY_MATERIAL,
+    USER_COLUMN,
+    WEEKLY_FREQUENCY,
+    WEEK_SOURCE_COLUMN,
+)
 
 try:  # como paquete (kpis.kpis_cruces) o como módulo suelto (kpis_cruces)
     from .kpis_calificaciones import CONDICIONES, condicion_por_estudiante, nota_por_estudiante
@@ -37,11 +131,11 @@ except ImportError:
     from kpis_trazabilidad import cargar_trazabilidad, clasificar_interacciones, marcar_ingresos
 
 # src/kpis/kpis_cruces.py -> raíz del proyecto -> data/
-DATOS_POR_DEFECTO = Path(__file__).resolve().parents[2] / "data"
+DATOS_POR_DEFECTO = DATA_PATH
 
-CLAVES = ["materia", "usuario"]
-GRUPOS = CONDICIONES + ["no se presentó"]
-INDICADORES = ["dias_activos", "ingresos", "semanas_activas", "interacciones_material", "interacciones_foros"]
+CLAVES = KEY_COLUMNS
+GRUPOS = GROUPS
+INDICADORES = INDICATORS
 
 
 # ----------------------------------------------------------------------------
@@ -57,10 +151,10 @@ def participacion_vs_notas(participacion: pd.DataFrame, calificaciones: pd.DataF
     nota_pct (0-100) y se_presento (False si no rindió ningún instrumento).
     """
     tiempo = tiempo_por_estudiante(participacion, cruce)
-    notas = nota_por_estudiante(calificaciones)[CLAVES + ["nota_pct"]]
+    notas = nota_por_estudiante(calificaciones)[CLAVES + [GRADE_PERCENT_COLUMN]]
     res = tiempo.merge(notas, on=CLAVES, how="left")
-    res["se_presento"] = res["nota_pct"].notna()
-    res["nota_pct"] = res["nota_pct"].fillna(0)
+    res[PRESENTED_COLUMN] = res[GRADE_PERCENT_COLUMN].notna()
+    res[GRADE_PERCENT_COLUMN] = res[GRADE_PERCENT_COLUMN].fillna(0)
     return res.sort_values(CLAVES).reset_index(drop=True)
 
 
@@ -74,16 +168,16 @@ def correlacion_participacion_nota(tabla: pd.DataFrame) -> pd.DataFrame:
     de nota por cada hora adicional, regresión lineal simple).
     """
     filas = []
-    for materia, g in tabla.groupby("materia"):
-        pendiente = np.polyfit(g["tiempo_min"], g["nota_pct"], 1)[0] * 60
+    for materia, g in tabla.groupby(SUBJECT_COLUMN):
+        pendiente = np.polyfit(g[TIME_MINUTES_COLUMN], g[GRADE_PERCENT_COLUMN], 1)[0] * MINUTES_PER_HOUR
         filas.append({
-            "materia": materia,
-            "estudiantes": len(g),
-            "pearson": g["tiempo_min"].corr(g["nota_pct"]),
-            "spearman": g["tiempo_min"].rank().corr(g["nota_pct"].rank()),
-            "pendiente_pp_por_hora": pendiente,
+            SUBJECT_COLUMN: materia,
+            STUDENTS_COLUMN: len(g),
+            PEARSON_COLUMN: g[TIME_MINUTES_COLUMN].corr(g[GRADE_PERCENT_COLUMN]),
+            SPEARMAN_COLUMN: g[TIME_MINUTES_COLUMN].rank().corr(g[GRADE_PERCENT_COLUMN].rank()),
+            SLOPE_COLUMN: pendiente,
         })
-    return pd.DataFrame(filas).round(3)
+    return pd.DataFrame(filas).round(CORRELATION_DECIMALS)
 
 
 def linea_de_tendencia(tabla: pd.DataFrame) -> pd.DataFrame:
@@ -95,19 +189,19 @@ def linea_de_tendencia(tabla: pd.DataFrame) -> pd.DataFrame:
     observado, el segundo punto se corta donde la recta llega a 100.
     """
     filas = []
-    for materia, g in tabla.groupby("materia"):
-        pendiente, ordenada = np.polyfit(g["tiempo_min"], g["nota_pct"], 1)
-        x0, x1 = g["tiempo_min"].min(), g["tiempo_min"].max()
+    for materia, g in tabla.groupby(SUBJECT_COLUMN):
+        pendiente, ordenada = np.polyfit(g[TIME_MINUTES_COLUMN], g[GRADE_PERCENT_COLUMN], 1)
+        x0, x1 = g[TIME_MINUTES_COLUMN].min(), g[TIME_MINUTES_COLUMN].max()
         if pendiente > 0:
-            x1 = min(x1, (100 - ordenada) / pendiente)
+            x1 = min(x1, (GRADE_SCALE_MAX - ordenada) / pendiente)
         elif pendiente < 0:
             x1 = min(x1, (0 - ordenada) / pendiente)
         for x in (x0, x1):
-            filas.append({"materia": materia, "tiempo_min": x, "nota_pct": pendiente * x + ordenada})
-    return pd.DataFrame(filas).round(2)
+            filas.append({SUBJECT_COLUMN: materia, TIME_MINUTES_COLUMN: x, GRADE_PERCENT_COLUMN: pendiente * x + ordenada})
+    return pd.DataFrame(filas).round(ROUND_DECIMALS)
 
 
-def nota_por_tramo_de_participacion(tabla: pd.DataFrame, tramos: int = 4) -> pd.DataFrame:
+def nota_por_tramo_de_participacion(tabla: pd.DataFrame, tramos: int = PARTICIPATION_BRACKET_COUNT) -> pd.DataFrame:
     """Nota promedio según el tramo de tiempo en la plataforma, por asignatura.
 
     Los estudiantes se dividen en `tramos` grupos de igual tamaño según su tiempo (cuartiles por
@@ -116,18 +210,17 @@ def nota_por_tramo_de_participacion(tabla: pd.DataFrame, tramos: int = 4) -> pd.
     Devuelve: materia, tramo, tiempo_desde_min, tiempo_hasta_min, estudiantes, nota_promedio_pct.
     """
     piezas = []
-    for materia, g in tabla.groupby("materia"):
-        tramo = pd.qcut(g["tiempo_min"], tramos, duplicates="drop")
+    for materia, g in tabla.groupby(SUBJECT_COLUMN):
+        tramo = pd.qcut(g[TIME_MINUTES_COLUMN], tramos, duplicates="drop")
         res = (
             g.groupby(tramo, observed=True)
-            .agg(tiempo_desde_min=("tiempo_min", "min"), tiempo_hasta_min=("tiempo_min", "max"),
-                 estudiantes=("usuario", "size"), nota_promedio_pct=("nota_pct", "mean"))
+            .agg(**{TIME_FROM_MINUTES_COLUMN: (TIME_MINUTES_COLUMN, "min"), TIME_TO_MINUTES_COLUMN: (TIME_MINUTES_COLUMN, "max"), STUDENTS_COLUMN: (USER_COLUMN, "size"), AVERAGE_GRADE_PERCENT_COLUMN: (GRADE_PERCENT_COLUMN, "mean")})
             .reset_index(drop=True)
         )
-        res.insert(0, "tramo", range(1, len(res) + 1))
-        res.insert(0, "materia", materia)
+        res.insert(0, BRACKET_COLUMN, range(1, len(res) + 1))
+        res.insert(0, SUBJECT_COLUMN, materia)
         piezas.append(res)
-    return pd.concat(piezas, ignore_index=True).round(2)
+    return pd.concat(piezas, ignore_index=True).round(ROUND_DECIMALS)
 
 
 def graficar_dispersion(tabla: pd.DataFrame, tendencia: pd.DataFrame, correlacion: pd.DataFrame,
@@ -139,26 +232,26 @@ def graficar_dispersion(tabla: pd.DataFrame, tendencia: pd.DataFrame, correlacio
     """
     import matplotlib.pyplot as plt
 
-    materias = tabla["materia"].unique()
+    materias = tabla[SUBJECT_COLUMN].unique()
     fig, ejes = plt.subplots(1, len(materias), figsize=(5 * len(materias), 4), sharey=True, squeeze=False)
     for eje, materia in zip(ejes[0], materias):
-        p = tabla[tabla["materia"] == materia]
-        t = tendencia[tendencia["materia"] == materia]
-        r = correlacion.loc[correlacion["materia"] == materia, "pearson"].iloc[0]
-        for presento, color, etiqueta in ((True, "#1F5C6B", "Se presentó"), (False, "#B5523B", "No se presentó")):
-            q = p[p["se_presento"] == presento]
-            eje.scatter(q["tiempo_min"] / 60, q["nota_pct"], s=18, alpha=0.6, color=color, label=etiqueta)
-        eje.plot(t["tiempo_min"] / 60, t["nota_pct"], "--", color="#E0A458", linewidth=2)
-        eje.set_title(f"{materia.capitalize()} (r = {r:.2f}, n = {len(p)})")
-        eje.set_xlabel("Tiempo en la plataforma (horas)")
+        p = tabla[tabla[SUBJECT_COLUMN] == materia]
+        t = tendencia[tendencia[SUBJECT_COLUMN] == materia]
+        r = correlacion.loc[correlacion[SUBJECT_COLUMN] == materia, PEARSON_COLUMN].iloc[0]
+        for presento, color, etiqueta in ((True, STATIC_PRIMARY_COLOR, STATIC_PRESENTED_LABEL), (False, STATIC_NOT_PRESENTED_COLOR, NOT_PRESENTED_LABEL)):
+            q = p[p[PRESENTED_COLUMN] == presento]
+            eje.scatter(q[TIME_MINUTES_COLUMN] / MINUTES_PER_HOUR, q[GRADE_PERCENT_COLUMN], s=18, alpha=0.6, color=color, label=etiqueta)
+        eje.plot(t[TIME_MINUTES_COLUMN] / MINUTES_PER_HOUR, t[GRADE_PERCENT_COLUMN], "--", color=STATIC_TREND_COLOR, linewidth=2)
+        eje.set_title(STATIC_CORRELATION_TITLE_TEMPLATE.format(subject=materia.capitalize(), r=r, n=len(p)))
+        eje.set_xlabel(STATIC_TIME_HOURS_LABEL)
         eje.spines[["top", "right"]].set_visible(False)
-    ejes[0][0].set_ylabel("Nota (% del máximo posible)")
+    ejes[0][0].set_ylabel(STATIC_GRADE_PERCENT_LABEL)
     ejes[0][0].set_ylim(-5, 105)
     ejes[0][-1].legend(loc="lower right", frameon=False)
-    fig.suptitle("Tiempo en la plataforma vs. nota", x=0.01, ha="left")
+    fig.suptitle(STATIC_TIME_VS_GRADE_TITLE, x=STATIC_TITLE_X_POSITION, ha="left")
     fig.tight_layout()
     if ruta is not None:
-        fig.savefig(ruta, dpi=150, bbox_inches="tight")
+        fig.savefig(ruta, dpi=STATIC_FIGURE_DPI, bbox_inches="tight")
     return fig
 
 
@@ -173,28 +266,28 @@ def prueba_de_correlacion(tabla: pd.DataFrame, solo_presentados: bool = False) -
     Devuelve: materia, estudiantes, pearson, pearson_ic95_inf, pearson_ic95_sup, pearson_p,
     spearman, spearman_p y significativa (ambos p-valores < 0,05).
     """
-    datos = tabla[tabla["se_presento"]] if solo_presentados else tabla
+    datos = tabla[tabla[PRESENTED_COLUMN]] if solo_presentados else tabla
     filas = []
-    for materia, g in datos.groupby("materia"):
-        pearson = stats.pearsonr(g["tiempo_min"], g["nota_pct"])
-        ic = pearson.confidence_interval(0.95)
-        spearman = stats.spearmanr(g["tiempo_min"], g["nota_pct"])
+    for materia, g in datos.groupby(SUBJECT_COLUMN):
+        pearson = stats.pearsonr(g[TIME_MINUTES_COLUMN], g[GRADE_PERCENT_COLUMN])
+        ic = pearson.confidence_interval(CONFIDENCE_LEVEL)
+        spearman = stats.spearmanr(g[TIME_MINUTES_COLUMN], g[GRADE_PERCENT_COLUMN])
         filas.append({
-            "materia": materia, "estudiantes": len(g),
-            "pearson": pearson.statistic, "pearson_ic95_inf": ic.low, "pearson_ic95_sup": ic.high,
-            "pearson_p": pearson.pvalue,
-            "spearman": spearman.statistic, "spearman_p": spearman.pvalue,
+            SUBJECT_COLUMN: materia, STUDENTS_COLUMN: len(g),
+            PEARSON_COLUMN: pearson.statistic, PEARSON_CI_LOW_COLUMN: ic.low, PEARSON_CI_HIGH_COLUMN: ic.high,
+            PEARSON_P_COLUMN: pearson.pvalue,
+            SPEARMAN_COLUMN: spearman.statistic, SPEARMAN_P_COLUMN: spearman.pvalue,
         })
     res = pd.DataFrame(filas)
-    res["significativa"] = (res["pearson_p"] < 0.05) & (res["spearman_p"] < 0.05)
-    return res.round(4)
+    res[SIGNIFICANT_COLUMN] = (res[PEARSON_P_COLUMN] < SIGNIFICANCE_LEVEL) & (res[SPEARMAN_P_COLUMN] < SIGNIFICANCE_LEVEL)
+    return res.round(CORRELATION_TEST_DECIMALS)
 
 
 def tiempo_por_condicion(tabla: pd.DataFrame, calificaciones: pd.DataFrame, cruce: pd.DataFrame) -> pd.DataFrame:
     """Agrega a la tabla por alumno su condición académica (promocionado, regular, libre o no se presentó)."""
-    condicion = condicion_por_estudiante(calificaciones, cruce)[CLAVES + ["condicion"]]
+    condicion = condicion_por_estudiante(calificaciones, cruce)[CLAVES + [CONDITION_COLUMN]]
     res = tabla.merge(condicion, on=CLAVES, how="left")
-    res["condicion"] = res["condicion"].fillna("no se presentó")
+    res[CONDITION_COLUMN] = res[CONDITION_COLUMN].fillna(CONDITION_NOT_PRESENTED)
     return res
 
 
@@ -204,12 +297,12 @@ def resumen_tiempo_por_condicion(tabla_condicion: pd.DataFrame) -> pd.DataFrame:
     Devuelve: materia, condicion, estudiantes, promedio_min, mediana_min (incluye grupos vacíos).
     """
     res = (
-        tabla_condicion.groupby(["materia", "condicion"])["tiempo_min"]
-        .agg(estudiantes="size", promedio_min="mean", mediana_min="median")
+        tabla_condicion.groupby([SUBJECT_COLUMN, CONDITION_COLUMN])[TIME_MINUTES_COLUMN]
+        .agg(**{STUDENTS_COLUMN: "size", AVERAGE_MINUTES_COLUMN: "mean", MEDIAN_MINUTES_COLUMN: "median"})
     )
-    completo = pd.MultiIndex.from_product([sorted(tabla_condicion["materia"].unique()), GRUPOS], names=["materia", "condicion"])
+    completo = pd.MultiIndex.from_product([sorted(tabla_condicion[SUBJECT_COLUMN].unique()), GRUPOS], names=[SUBJECT_COLUMN, CONDITION_COLUMN])
     res = res.reindex(completo).reset_index()
-    res["estudiantes"] = res["estudiantes"].fillna(0).astype(int)
+    res[STUDENTS_COLUMN] = res[STUDENTS_COLUMN].fillna(0).astype(int)
     return res.round(1)
 
 
@@ -217,21 +310,21 @@ def graficar_tiempo_por_condicion(tabla_condicion: pd.DataFrame, ruta: Path | No
     """Diagrama de caja del tiempo en la plataforma (horas) según la condición, un panel por asignatura."""
     import matplotlib.pyplot as plt
 
-    materias = tabla_condicion["materia"].unique()
+    materias = tabla_condicion[SUBJECT_COLUMN].unique()
     fig, ejes = plt.subplots(1, len(materias), figsize=(5 * len(materias), 4.2), sharey=True, squeeze=False)
     for eje, materia in zip(ejes[0], materias):
-        p = tabla_condicion[tabla_condicion["materia"] == materia]
-        grupos = [g for g in GRUPOS if (p["condicion"] == g).any()]
-        datos = [p.loc[p["condicion"] == g, "tiempo_min"] / 60 for g in grupos]
-        eje.boxplot(datos, tick_labels=[f"{g}\n(n={len(d)})" for g, d in zip(grupos, datos)], patch_artist=True,
-                    boxprops={"facecolor": "#8FB8C2"}, medianprops={"color": "#B5523B"})
+        p = tabla_condicion[tabla_condicion[SUBJECT_COLUMN] == materia]
+        grupos = [g for g in GRUPOS if (p[CONDITION_COLUMN] == g).any()]
+        datos = [p.loc[p[CONDITION_COLUMN] == g, TIME_MINUTES_COLUMN] / MINUTES_PER_HOUR for g in grupos]
+        eje.boxplot(datos, tick_labels=[STATIC_BOXPLOT_LABEL_TEMPLATE.format(group=g, n=len(d)) for g, d in zip(grupos, datos)], patch_artist=True,
+                    boxprops={"facecolor": STATIC_BOX_COLOR}, medianprops={"color": STATIC_NOT_PRESENTED_COLOR})
         eje.set_title(materia.capitalize())
         eje.spines[["top", "right"]].set_visible(False)
-    ejes[0][0].set_ylabel("Tiempo en la plataforma (horas)")
-    fig.suptitle("Tiempo de conexión según la condición académica", x=0.01, ha="left")
+    ejes[0][0].set_ylabel(STATIC_TIME_HOURS_LABEL)
+    fig.suptitle(STATIC_TIME_BY_CONDITION_TITLE, x=STATIC_TITLE_X_POSITION, ha="left")
     fig.tight_layout()
     if ruta is not None:
-        fig.savefig(ruta, dpi=150, bbox_inches="tight")
+        fig.savefig(ruta, dpi=STATIC_FIGURE_DPI, bbox_inches="tight")
     return fig
 
 
@@ -239,7 +332,7 @@ def graficar_tiempo_por_condicion(tabla_condicion: pd.DataFrame, ruta: Path | No
 # Cruce 3: trazabilidad vs. rendimiento
 # ----------------------------------------------------------------------------
 def indicadores_de_trazabilidad(trazabilidad: pd.DataFrame, cruce: pd.DataFrame,
-                                minutos_inactividad: int = 30) -> pd.DataFrame:
+                                minutos_inactividad: int = INACTIVITY_MINUTES) -> pd.DataFrame:
     """Indicadores de uso de la plataforma de cada estudiante matriculado, por asignatura.
 
     Devuelve: materia, usuario, dias_activos, ingresos, semanas_activas, interacciones_material,
@@ -248,19 +341,13 @@ def indicadores_de_trazabilidad(trazabilidad: pd.DataFrame, cruce: pd.DataFrame,
     eventos = marcar_ingresos(trazabilidad, minutos_inactividad)
     tipo = clasificar_interacciones(eventos)
     eventos = eventos.assign(
-        semana=eventos["fecha"].dt.to_period("W"),
-        es_material=tipo == "Material de estudio",
-        es_foro=tipo == "Foros y mensajería",
+        **{WEEK_SOURCE_COLUMN: eventos[EVENT_DATE_COLUMN].dt.to_period(WEEKLY_FREQUENCY), IS_MATERIAL_COLUMN: tipo == TYPE_STUDY_MATERIAL, IS_FORUM_COLUMN: tipo == TYPE_FORUMS},
     )
     indicadores = eventos.groupby(CLAVES).agg(
-        dias_activos=("dia", "nunique"),
-        ingresos=("es_ingreso", "sum"),
-        semanas_activas=("semana", "nunique"),
-        interacciones_material=("es_material", "sum"),
-        interacciones_foros=("es_foro", "sum"),
+        **{ACTIVE_DAYS_COLUMN: (DAY_COLUMN, "nunique"), ENTRIES_COLUMN: (ENTRY_COLUMN, "sum"), ACTIVE_WEEKS_COLUMN: (WEEK_SOURCE_COLUMN, "nunique"), MATERIAL_INTERACTIONS_COLUMN: (IS_MATERIAL_COLUMN, "sum"), FORUM_INTERACTIONS_COLUMN: (IS_FORUM_COLUMN, "sum")},
     ).reset_index()
 
-    matriculados = cruce.loc[cruce["matriculado"], CLAVES]
+    matriculados = cruce.loc[cruce[ENROLLED_COLUMN], CLAVES]
     res = matriculados.merge(indicadores, on=CLAVES, how="left").fillna(0)
     res[INDICADORES] = res[INDICADORES].astype(int)
     return res
@@ -273,10 +360,10 @@ def trazabilidad_vs_notas(trazabilidad: pd.DataFrame, calificaciones: pd.DataFra
     Devuelve: materia, usuario, los indicadores de `indicadores_de_trazabilidad`, nota_pct (0-100,
     con 0 para quienes no se presentaron) y se_presento.
     """
-    notas = nota_por_estudiante(calificaciones)[CLAVES + ["nota_pct"]]
+    notas = nota_por_estudiante(calificaciones)[CLAVES + [GRADE_PERCENT_COLUMN]]
     res = indicadores_de_trazabilidad(trazabilidad, cruce).merge(notas, on=CLAVES, how="left")
-    res["se_presento"] = res["nota_pct"].notna()
-    res["nota_pct"] = res["nota_pct"].fillna(0)
+    res[PRESENTED_COLUMN] = res[GRADE_PERCENT_COLUMN].notna()
+    res[GRADE_PERCENT_COLUMN] = res[GRADE_PERCENT_COLUMN].fillna(0)
     return res.sort_values(CLAVES).reset_index(drop=True)
 
 
@@ -288,26 +375,26 @@ def correlaciones_trazabilidad_nota(tabla: pd.DataFrame, solo_presentados: bool 
     Devuelve (una fila por asignatura e indicador): materia, indicador, estudiantes, spearman,
     p_valor y significativa (p_valor < 0,05).
     """
-    datos = tabla[tabla["se_presento"]] if solo_presentados else tabla
+    datos = tabla[tabla[PRESENTED_COLUMN]] if solo_presentados else tabla
     filas = []
-    for materia, g in datos.groupby("materia"):
+    for materia, g in datos.groupby(SUBJECT_COLUMN):
         for indicador in INDICADORES:
-            r = stats.spearmanr(g[indicador], g["nota_pct"])
-            filas.append({"materia": materia, "indicador": indicador, "estudiantes": len(g),
-                          "spearman": r.statistic, "p_valor": r.pvalue})
+            r = stats.spearmanr(g[indicador], g[GRADE_PERCENT_COLUMN])
+            filas.append({SUBJECT_COLUMN: materia, INDICATOR_COLUMN: indicador, STUDENTS_COLUMN: len(g),
+                          SPEARMAN_COLUMN: r.statistic, P_VALUE_COLUMN: r.pvalue})
     res = pd.DataFrame(filas)
-    res["significativa"] = res["p_valor"] < 0.05
-    return res.round({"spearman": 3, "p_valor": 6})
+    res[SIGNIFICANT_COLUMN] = res[P_VALUE_COLUMN] < SIGNIFICANCE_LEVEL
+    return res.round({SPEARMAN_COLUMN: SPEARMAN_DECIMALS, P_VALUE_COLUMN: P_VALUE_DECIMALS})
 
 
 def matriz_correlaciones(correlaciones: pd.DataFrame) -> pd.DataFrame:
     """Matriz indicador (filas) x asignatura (columnas) con la correlación, para `heatmap`."""
-    return correlaciones.pivot(index="indicador", columns="materia", values="spearman").reindex(INDICADORES)
+    return correlaciones.pivot(index=INDICATOR_COLUMN, columns=SUBJECT_COLUMN, values=SPEARMAN_COLUMN).reindex(INDICADORES)
 
 
 def indicador_mas_relacionado(correlaciones: pd.DataFrame) -> str:
     """Indicador con mayor |correlación| promedio entre asignaturas."""
-    return correlaciones.assign(abs_r=correlaciones["spearman"].abs()).groupby("indicador")["abs_r"].mean().idxmax()
+    return correlaciones.assign(**{ABSOLUTE_R_COLUMN: correlaciones[SPEARMAN_COLUMN].abs()}).groupby(INDICATOR_COLUMN)[ABSOLUTE_R_COLUMN].mean().idxmax()
 
 
 def graficar_mapa_correlaciones(versiones: dict[str, pd.DataFrame], ruta: Path | None = None):
@@ -317,19 +404,19 @@ def graficar_mapa_correlaciones(versiones: dict[str, pd.DataFrame], ruta: Path |
     fig, ejes = plt.subplots(1, len(versiones), figsize=(6.5 * len(versiones), 4.2), sharey=True, squeeze=False)
     for eje, (titulo, corr) in zip(ejes[0], versiones.items()):
         matriz = matriz_correlaciones(corr)
-        significativa = corr.pivot(index="indicador", columns="materia", values="significativa").reindex(INDICADORES)
+        significativa = corr.pivot(index=INDICATOR_COLUMN, columns=SUBJECT_COLUMN, values=SIGNIFICANT_COLUMN).reindex(INDICADORES)
         imagen = eje.imshow(matriz.values, cmap="RdBu_r", vmin=-1, vmax=1, aspect="auto")
         eje.set_xticks(range(len(matriz.columns)), [m.capitalize() for m in matriz.columns])
         eje.set_yticks(range(len(matriz.index)), matriz.index)
         for i in range(matriz.shape[0]):
             for j in range(matriz.shape[1]):
-                marca = "*" if significativa.iloc[i, j] else ""
-                eje.text(j, i, f"{matriz.iloc[i, j]:.2f}{marca}", ha="center", va="center", fontsize=10)
+                marca = STATIC_SIGNIFICANT_MARK if significativa.iloc[i, j] else ""
+                eje.text(j, i, STATIC_HEATMAP_CELL_TEMPLATE.format(value=matriz.iloc[i, j], mark=marca), ha="center", va="center", fontsize=10)
         eje.set_title(titulo)
-    fig.colorbar(imagen, ax=ejes[0].tolist(), label="Correlación de Spearman con la nota", shrink=0.85)
-    fig.suptitle("Trazabilidad vs. nota (* = p < 0,05)", x=0.01, ha="left")
+    fig.colorbar(imagen, ax=ejes[0].tolist(), label=STATIC_SPEARMAN_LABEL, shrink=0.85)
+    fig.suptitle(STATIC_TRACEABILITY_VS_GRADE_TITLE, x=STATIC_TITLE_X_POSITION, ha="left")
     if ruta is not None:
-        fig.savefig(ruta, dpi=150, bbox_inches="tight")
+        fig.savefig(ruta, dpi=STATIC_FIGURE_DPI, bbox_inches="tight")
     return fig
 
 
@@ -342,25 +429,25 @@ def graficar_dispersion_trazabilidad(tabla: pd.DataFrame, indicador: str, ruta: 
     import matplotlib.pyplot as plt
 
     rng = np.random.default_rng(0)
-    materias = tabla["materia"].unique()
+    materias = tabla[SUBJECT_COLUMN].unique()
     fig, ejes = plt.subplots(1, len(materias), figsize=(5 * len(materias), 4.4), sharey=True, squeeze=False)
     for eje, materia in zip(ejes[0], materias):
-        p = tabla[tabla["materia"] == materia]
-        for presento, color, etiqueta in ((True, "#1F5C6B", "Se presentó"), (False, "#B5523B", "No se presentó")):
-            q = p[p["se_presento"] == presento]
+        p = tabla[tabla[SUBJECT_COLUMN] == materia]
+        for presento, color, etiqueta in ((True, STATIC_PRIMARY_COLOR, STATIC_PRESENTED_LABEL), (False, STATIC_NOT_PRESENTED_COLOR, NOT_PRESENTED_LABEL)):
+            q = p[p[PRESENTED_COLUMN] == presento]
             x = q[indicador] + rng.uniform(-0.25, 0.25, len(q))
-            eje.scatter(x, q["nota_pct"], s=18, alpha=0.6, color=color, label=etiqueta)
+            eje.scatter(x, q[GRADE_PERCENT_COLUMN], s=18, alpha=0.6, color=color, label=etiqueta)
         eje.set_title(materia.capitalize())
         eje.set_xlabel(indicador.replace("_", " ").capitalize())
         eje.spines[["top", "right"]].set_visible(False)
-    ejes[0][0].set_ylabel("Nota (% del máximo posible)")
+    ejes[0][0].set_ylabel(STATIC_GRADE_PERCENT_LABEL)
     ejes[0][0].set_ylim(-5, 105)
     manijas, etiquetas = ejes[0][0].get_legend_handles_labels()
     fig.legend(manijas, etiquetas, loc="lower center", ncol=2, frameon=False)
-    fig.suptitle(f"{indicador.replace('_', ' ').capitalize()} vs. nota", x=0.01, ha="left")
+    fig.suptitle(STATIC_INDICATOR_TITLE_TEMPLATE.format(indicator=indicador.replace("_", " ").capitalize()), x=STATIC_TITLE_X_POSITION, ha="left")
     fig.tight_layout(rect=[0, 0.07, 1, 1])
     if ruta is not None:
-        fig.savefig(ruta, dpi=150, bbox_inches="tight")
+        fig.savefig(ruta, dpi=STATIC_FIGURE_DPI, bbox_inches="tight")
     return fig
 
 
@@ -379,23 +466,23 @@ def calcular_kpis_cruces(datos=None) -> dict[str, pd.DataFrame]:
       - correlaciones_trazabilidad_todos / correlaciones_trazabilidad_presentados.
     """
     datos = Path(datos) if datos else DATOS_POR_DEFECTO
-    integrado = datos / "integrado"
-    participacion = pd.read_parquet(integrado / "participacion_integrado.parquet")
-    calificaciones = pd.read_parquet(integrado / "calificaciones_integrado.parquet")
-    cruce = pd.read_parquet(integrado / "cruce_matriculados_integrado.parquet")
+    integrado = datos / INTEGRATED_FOLDER_NAME
+    participacion = pd.read_parquet(integrado / PARTICIPATION_FILE)
+    calificaciones = pd.read_parquet(integrado / GRADES_FILE)
+    cruce = pd.read_parquet(integrado / ENROLLMENT_CROSS_FILE)
     trazabilidad = cargar_trazabilidad(datos, solo_matriculados=True)
 
     tabla = participacion_vs_notas(participacion, calificaciones, cruce)
     tabla_traz = trazabilidad_vs_notas(trazabilidad, calificaciones, cruce)
     return {
-        "participacion_vs_notas": tabla,
-        "correlacion_participacion": correlacion_participacion_nota(tabla),
-        "tendencia_participacion": linea_de_tendencia(tabla),
-        "tramos_participacion": nota_por_tramo_de_participacion(tabla),
-        "prueba_correlacion_todos": prueba_de_correlacion(tabla),
-        "prueba_correlacion_presentados": prueba_de_correlacion(tabla, solo_presentados=True),
-        "tiempo_por_condicion": resumen_tiempo_por_condicion(tiempo_por_condicion(tabla, calificaciones, cruce)),
-        "trazabilidad_vs_notas": tabla_traz,
-        "correlaciones_trazabilidad_todos": correlaciones_trazabilidad_nota(tabla_traz),
-        "correlaciones_trazabilidad_presentados": correlaciones_trazabilidad_nota(tabla_traz, solo_presentados=True),
+        KPI_PARTICIPATION_VS_GRADES: tabla,
+        KPI_PARTICIPATION_CORRELATION: correlacion_participacion_nota(tabla),
+        KPI_PARTICIPATION_TREND: linea_de_tendencia(tabla),
+        KPI_PARTICIPATION_BRACKETS: nota_por_tramo_de_participacion(tabla),
+        KPI_CORRELATION_TEST_ALL: prueba_de_correlacion(tabla),
+        KPI_CORRELATION_TEST_PRESENTED: prueba_de_correlacion(tabla, solo_presentados=True),
+        KPI_TIME_BY_CONDITION: resumen_tiempo_por_condicion(tiempo_por_condicion(tabla, calificaciones, cruce)),
+        KPI_TRACEABILITY_VS_GRADES: tabla_traz,
+        KPI_TRACEABILITY_CORRELATIONS_ALL: correlaciones_trazabilidad_nota(tabla_traz),
+        KPI_TRACEABILITY_CORRELATIONS_PRESENTED: correlaciones_trazabilidad_nota(tabla_traz, solo_presentados=True),
     }

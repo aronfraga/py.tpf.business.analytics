@@ -1,53 +1,46 @@
 from typing import Dict, List
 
 import pandas as pd
+import streamlit as st
 
-from data.real_common import (
-    SUBJECT_ALL,
-    SUBJECT_KEYS,
-    SUBJECT_OPTIONS,
-    SUBJECTS,
-    load_enrollment_cross,
-    load_grades,
-    select_subject,
-)
+from data.real_common import load_enrollment_cross, load_grades, select_subject
 from kpis.kpis_calificaciones import condicion_academica, distribucion_de_notas
-
-SUBJECT_COLUMN: str = "materia"
-USER_COLUMN: str = "usuario"
-INSTRUMENT_SOURCE_COLUMN: str = "instrumento"
-FILE_ID_COLUMN: str = "id_archivo"
-OBTAINED_COLUMN: str = "nota_obtenida"
-MAXIMUM_COLUMN: str = "nota_max"
-PERCENT_COLUMN: str = "percent"
-ENROLLED_COLUMN: str = "matriculado"
-INSTRUMENT_COLUMN: str = "instrument"
-AVERAGE_COLUMN: str = "average"
-RANGE_COLUMN: str = "range"
-COUNT_COLUMN: str = "count"
-STATUS_COLUMN: str = "status"
-HISTOGRAM_SOURCE_RANGE_COLUMN: str = "rango"
-HISTOGRAM_SOURCE_FROM_COLUMN: str = "desde"
-HISTOGRAM_SOURCE_TO_COLUMN: str = "hasta"
-HISTOGRAM_SOURCE_COUNT_COLUMN: str = "estudiantes"
-CONDITION_COLUMN: str = "condicion"
-CONDITION_COUNT_COLUMN: str = "estudiantes"
-SUBJECT_NAME_COLUMN: str = "subject"
-
-PERCENT_FACTOR: float = 100.0
-SCALE_DIVISOR: int = 10
-AVERAGE_DECIMALS: int = 1
-HISTOGRAM_BIN_WIDTH: int = 10
-
-STATUS_LABELS: Dict[str, str] = {
-    "libre": "Libre",
-    "regular": "Regular",
-    "promocionado": "Promociona",
-}
-
-STATUS_ORDER: List[str] = ["libre", "regular", "promocionado"]
-
-NOT_PRESENTED_LABEL: str = "No se presentó"
+from constants import (
+    AVERAGE_COLUMN,
+    AVERAGE_DECIMALS,
+    CACHE_TTL_SECONDS,
+    CONDITION_COLUMN,
+    CONDITION_LABELS,
+    COUNT_COLUMN,
+    DISTRIBUTION_FROM_COLUMN,
+    DISTRIBUTION_TO_COLUMN,
+    ENROLLED_COLUMN,
+    FILE_ID_COLUMN,
+    HISTOGRAM_BIN_WIDTH,
+    HISTOGRAM_KEY,
+    INSTRUMENTS_KEY,
+    INSTRUMENT_COLUMN,
+    INSTRUMENT_SOURCE_COLUMN,
+    MAXIMUM_COLUMN,
+    NOT_PRESENTED_LABEL,
+    OBTAINED_COLUMN,
+    PERCENT_FACTOR,
+    PERFORMANCE_PERCENT_COLUMN,
+    RANGE_COLUMN,
+    RANGE_LABEL_TEMPLATE,
+    SCALE_DIVISOR,
+    SPINNER_BUILD_PERFORMANCE,
+    STATUS_COLUMN,
+    STATUS_ORDER,
+    STUDENTS_COLUMN,
+    SUBJECTS,
+    SUBJECT_ALL,
+    SUBJECT_COLUMN,
+    SUBJECT_KEYS,
+    SUBJECT_NAME_COLUMN,
+    SUBJECT_OPTIONS,
+    USER_COLUMN,
+)
 
 def build_instrument_table(grades: pd.DataFrame, enrollment_cross: pd.DataFrame, subject: str) -> pd.DataFrame:
     pair_columns: list = [SUBJECT_COLUMN, USER_COLUMN]
@@ -59,9 +52,9 @@ def build_instrument_table(grades: pd.DataFrame, enrollment_cross: pd.DataFrame,
     with_maximum: pd.DataFrame = joined.loc[has_maximum]
     selected: pd.DataFrame = select_subject(with_maximum, SUBJECT_COLUMN, subject).copy()
     ratio: pd.Series = selected[OBTAINED_COLUMN] / selected[MAXIMUM_COLUMN]
-    selected[PERCENT_COLUMN] = ratio * PERCENT_FACTOR
+    selected[PERFORMANCE_PERCENT_COLUMN] = ratio * PERCENT_FACTOR
     grouped: pd.core.groupby.DataFrameGroupBy = selected.groupby(INSTRUMENT_SOURCE_COLUMN)
-    mean_percent: pd.Series = grouped[PERCENT_COLUMN].mean()
+    mean_percent: pd.Series = grouped[PERFORMANCE_PERCENT_COLUMN].mean()
     first_file: pd.Series = grouped[FILE_ID_COLUMN].min()
     summary: pd.DataFrame = pd.DataFrame({AVERAGE_COLUMN: mean_percent, FILE_ID_COLUMN: first_file})
     ordered: pd.DataFrame = summary.sort_values(FILE_ID_COLUMN)
@@ -79,24 +72,24 @@ def build_instrument_table(grades: pd.DataFrame, enrollment_cross: pd.DataFrame,
 def build_range_label(row_from: int, row_to: int) -> str:
     label_from: int = row_from // SCALE_DIVISOR
     label_to: int = row_to // SCALE_DIVISOR
-    label: str = f"{label_from}-{label_to}"
+    label: str = RANGE_LABEL_TEMPLATE.format(start=label_from, end=label_to)
 
     return label
 
 def build_histogram_table(distribution: pd.DataFrame, subject: str) -> pd.DataFrame:
     selected: pd.DataFrame = select_subject(distribution, SUBJECT_COLUMN, subject)
-    range_columns: list = [HISTOGRAM_SOURCE_FROM_COLUMN, HISTOGRAM_SOURCE_TO_COLUMN]
-    grouped_rows: pd.DataFrame = selected.groupby(range_columns, as_index=False)[HISTOGRAM_SOURCE_COUNT_COLUMN].sum()
-    sorted_rows: pd.DataFrame = grouped_rows.sort_values(HISTOGRAM_SOURCE_FROM_COLUMN)
+    range_columns: list = [DISTRIBUTION_FROM_COLUMN, DISTRIBUTION_TO_COLUMN]
+    grouped_rows: pd.DataFrame = selected.groupby(range_columns, as_index=False)[STUDENTS_COLUMN].sum()
+    sorted_rows: pd.DataFrame = grouped_rows.sort_values(DISTRIBUTION_FROM_COLUMN)
     labels: List[str] = []
 
     for row in sorted_rows.itertuples(index=False):
-        row_from: int = getattr(row, HISTOGRAM_SOURCE_FROM_COLUMN)
-        row_to: int = getattr(row, HISTOGRAM_SOURCE_TO_COLUMN)
+        row_from: int = getattr(row, DISTRIBUTION_FROM_COLUMN)
+        row_to: int = getattr(row, DISTRIBUTION_TO_COLUMN)
         label: str = build_range_label(row_from=row_from, row_to=row_to)
         labels.append(label)
 
-    counts: List[int] = sorted_rows[HISTOGRAM_SOURCE_COUNT_COLUMN].tolist()
+    counts: List[int] = sorted_rows[STUDENTS_COLUMN].tolist()
     table_data: Dict[str, list] = {
         RANGE_COLUMN: labels,
         COUNT_COLUMN: counts,
@@ -113,8 +106,8 @@ def build_status_table(conditions: pd.DataFrame, subject: str, enrolled_count: i
     for condition in STATUS_ORDER:
         is_condition: pd.Series = selected[CONDITION_COLUMN] == condition
         condition_rows: pd.DataFrame = selected.loc[is_condition]
-        condition_count: int = int(condition_rows[CONDITION_COUNT_COLUMN].sum())
-        label: str = STATUS_LABELS[condition]
+        condition_count: int = int(condition_rows[STUDENTS_COLUMN].sum())
+        label: str = CONDITION_LABELS[condition]
         labels.append(label)
         counts.append(condition_count)
 
@@ -130,6 +123,7 @@ def build_status_table(conditions: pd.DataFrame, subject: str, enrolled_count: i
 
     return result
 
+@st.cache_data(ttl=CACHE_TTL_SECONDS, show_spinner=SPINNER_BUILD_PERFORMANCE)
 def build_all() -> Dict[str, Dict[str, pd.DataFrame]]:
     grades: pd.DataFrame = load_grades()
     enrollment_cross: pd.DataFrame = load_enrollment_cross()
@@ -164,17 +158,9 @@ def build_all() -> Dict[str, Dict[str, pd.DataFrame]]:
     instruments[SUBJECT_ALL] = pd.concat(by_subject_tables, ignore_index=True)
 
     result: Dict[str, Dict[str, pd.DataFrame]] = {
-        "instruments": instruments,
-        "histogram": histograms,
-        "status": statuses,
+        INSTRUMENTS_KEY: instruments,
+        HISTOGRAM_KEY: histograms,
+        STATUS_COLUMN: statuses,
     }
 
     return result
-
-ALL_TABLES: Dict[str, Dict[str, pd.DataFrame]] = build_all()
-
-INSTRUMENT_COMPARISON: Dict[str, pd.DataFrame] = ALL_TABLES["instruments"]
-
-GRADE_HISTOGRAM: Dict[str, pd.DataFrame] = ALL_TABLES["histogram"]
-
-COURSE_STATUS: Dict[str, pd.DataFrame] = ALL_TABLES["status"]

@@ -1,12 +1,9 @@
 from typing import Any, Dict, List, Optional, Tuple
 
 import pandas as pd
+import streamlit as st
 
 from data.real_common import (
-    ALL_KEY,
-    SUBJECT_ALL,
-    SUBJECT_KEYS,
-    SUBJECT_OPTIONS,
     load_enrolled_traceability,
     load_enrollment_cross,
     load_grades,
@@ -15,57 +12,67 @@ from data.real_common import (
 )
 from kpis.kpis_calificaciones import condicion_por_estudiante
 from kpis.kpis_cruces import correlacion_participacion_nota, linea_de_tendencia, participacion_vs_notas
-from kpis.kpis_participacion import DIAS_ACTIVIDAD, sesiones_por_estudiante
-
-SUBJECT_COLUMN: str = "materia"
-USER_COLUMN: str = "usuario"
-SESSIONS_SOURCE_COLUMN: str = "sesiones"
-KPI_X_COLUMN: str = "tiempo_min"
-GRADE_PERCENT_COLUMN: str = "nota_pct"
-PRESENTED_COLUMN: str = "se_presento"
-PEARSON_COLUMN: str = "pearson"
-TIME_COLUMN: str = "time_min"
-GRADE_COLUMN: str = "grade"
-GROUP_SOURCE_COLUMN: str = "grupo"
-GROUP_COLUMN: str = "group"
-CONDITION_COLUMN: str = "condicion"
-ENROLLED_COLUMN: str = "matriculado"
-LAST_INTERACTION_COLUMN: str = "ultima_interaccion"
-LAST_NAME_COLUMN: str = "apellido"
-FIRST_NAME_COLUMN: str = "nombre"
-
-CONDITION_LABELS: Dict[str, str] = {
-    "promocionado": "Promociona",
-    "regular": "Regular",
-    "libre": "Libre",
-}
-
-LIBRE_LABEL: str = "Libre"
-NOT_PRESENTED_LABEL: str = "No se presentó"
-NEVER_LABEL: str = "Nunca"
-NEVER_ENTERED_REASON: str = "Nunca ingresó"
-INACTIVE_REASON: str = "Sin actividad hace más de 15 días"
-REASON_SEPARATOR: str = "; "
-DATE_FORMAT: str = "%Y-%m-%d"
-SECONDS_PER_DAY: float = 86400.0
-RISK_GRADE_DECIMALS: int = 1
-
-RISK_LABELS: Dict[str, str] = {
-    "student": "Estudiante",
-    "risk": "Motivo",
-    "sessions": "Sesiones",
-    "grade": "Nota",
-    "last_activity": "Última actividad",
-}
-
-SCALE_DIVISOR: int = 10
-GRADE_DECIMALS: int = 2
-VALUE_FORMAT: str = ".2f"
-CARD_TITLE: str = "Correlación tiempo–nota (Pearson)"
-
-NO_ASSOCIATION_LIMIT: float = 0.1
-WEAK_LIMIT: float = 0.3
-MODERATE_LIMIT: float = 0.5
+from kpis.kpis_participacion import sesiones_por_estudiante
+from constants import (
+    ACTIVITY_DAYS_LIMIT,
+    ALL_KEY,
+    ASSOCIATION_DETAIL_TEMPLATE,
+    CACHE_TTL_SECONDS,
+    CARD_KEY,
+    CONDITION_COLUMN,
+    CONDITION_LABELS,
+    CONDITION_LABEL_FREE,
+    CORRELATION_CARD_TITLE,
+    DATE_FORMAT,
+    DETAIL_KEY,
+    DIRECTION_NEGATIVE,
+    DIRECTION_POSITIVE,
+    ENROLLED_COLUMN,
+    FIRST_NAME_COLUMN,
+    FULL_NAME_TEMPLATE,
+    GRADE_COLUMN,
+    GRADE_PERCENT_COLUMN,
+    GROUP_COLUMN,
+    GROUP_SOURCE_COLUMN,
+    INACTIVE_REASON_TEMPLATE,
+    LAST_ACTIVITY_TABLE_COLUMN,
+    LAST_INTERACTION_COLUMN,
+    LAST_NAME_COLUMN,
+    MODERATE_LIMIT,
+    NEVER_ENTERED_REASON,
+    NEVER_LABEL,
+    NOT_PRESENTED_LABEL,
+    NO_ASSOCIATION_LIMIT,
+    PEARSON_COLUMN,
+    REASON_SEPARATOR,
+    RISK_GRADE_DECIMALS,
+    RISK_TABLE_COLUMN,
+    SCALE_DIVISOR,
+    SCATTER_GRADE_DECIMALS,
+    SCATTER_KEY,
+    SECONDS_PER_DAY,
+    SESSIONS_COLUMN,
+    SESSIONS_SOURCE_COLUMN,
+    SPINNER_BUILD_CORRELATION,
+    STRENGTH_MODERATE,
+    STRENGTH_STRONG,
+    STRENGTH_VERY_WEAK,
+    STRENGTH_WEAK,
+    STUDENT_LABEL_TEMPLATE,
+    STUDENT_TABLE_COLUMN,
+    SUBJECT_ALL,
+    SUBJECT_COLUMN,
+    SUBJECT_KEYS,
+    SUBJECT_OPTIONS,
+    TIME_COLUMN,
+    TIME_MINUTES_COLUMN,
+    TITLE_KEY,
+    TREND_KEY,
+    USER_COLUMN,
+    VALUE_FORMAT,
+    VALUE_KEY,
+    WEAK_LIMIT,
+)
 
 def build_points_table(participation: pd.DataFrame, traceability: pd.DataFrame, grades: pd.DataFrame, enrollment_cross: pd.DataFrame) -> pd.DataFrame:
     time_and_grades: pd.DataFrame = participacion_vs_notas(participacion=participation, calificaciones=grades, cruce=enrollment_cross)
@@ -77,7 +84,7 @@ def build_points_table(participation: pd.DataFrame, traceability: pd.DataFrame, 
 
 def scale_grades(percent_values: pd.Series) -> List[float]:
     scaled: pd.Series = percent_values / SCALE_DIVISOR
-    rounded: pd.Series = scaled.round(GRADE_DECIMALS)
+    rounded: pd.Series = scaled.round(SCATTER_GRADE_DECIMALS)
     result: List[float] = rounded.tolist()
 
     return result
@@ -86,7 +93,7 @@ def build_xy_table(source: pd.DataFrame, subject: str) -> pd.DataFrame:
     subject_key: str = SUBJECT_KEYS[subject]
     is_subject: pd.Series = source[SUBJECT_COLUMN] == subject_key
     selected: pd.DataFrame = source.loc[is_subject]
-    times: List[float] = selected[KPI_X_COLUMN].tolist()
+    times: List[float] = selected[TIME_MINUTES_COLUMN].tolist()
     grades: List[float] = scale_grades(percent_values=selected[GRADE_PERCENT_COLUMN])
     table_data: Dict[str, list] = {
         TIME_COLUMN: times,
@@ -128,7 +135,7 @@ def build_scatter_table(source: pd.DataFrame, subject: str) -> pd.DataFrame:
     subject_key: str = SUBJECT_KEYS[subject]
     is_subject: pd.Series = source[SUBJECT_COLUMN] == subject_key
     selected: pd.DataFrame = source.loc[is_subject]
-    times: List[float] = selected[KPI_X_COLUMN].tolist()
+    times: List[float] = selected[TIME_MINUTES_COLUMN].tolist()
     grades: List[float] = scale_grades(percent_values=selected[GRADE_PERCENT_COLUMN])
     groups: List[str] = selected[GROUP_SOURCE_COLUMN].tolist()
     table_data: Dict[str, list] = {
@@ -143,8 +150,8 @@ def build_scatter_table(source: pd.DataFrame, subject: str) -> pd.DataFrame:
 def build_risk_reason(group: str, last_interaction: Any, cutoff: pd.Timestamp) -> str:
     reasons: List[str] = []
 
-    if group == LIBRE_LABEL:
-        reasons.append(LIBRE_LABEL)
+    if group == CONDITION_LABEL_FREE:
+        reasons.append(CONDITION_LABEL_FREE)
 
     if group == NOT_PRESENTED_LABEL:
         reasons.append(NOT_PRESENTED_LABEL)
@@ -155,8 +162,8 @@ def build_risk_reason(group: str, last_interaction: Any, cutoff: pd.Timestamp) -
         elapsed: pd.Timedelta = cutoff - last_interaction
         elapsed_days: float = elapsed.total_seconds() / SECONDS_PER_DAY
 
-        if elapsed_days > DIAS_ACTIVIDAD:
-            reasons.append(INACTIVE_REASON)
+        if elapsed_days > ACTIVITY_DAYS_LIMIT:
+            reasons.append(INACTIVE_REASON_TEMPLATE.format(days=ACTIVITY_DAYS_LIMIT))
 
     text: str = REASON_SEPARATOR.join(reasons)
 
@@ -204,7 +211,7 @@ def build_risk_table(grouped_points: pd.DataFrame, participation_index: Dict[Tup
         if reason != "":
             last_name: str = getattr(participation_row, LAST_NAME_COLUMN)
             first_name: str = getattr(participation_row, FIRST_NAME_COLUMN)
-            student_label: str = f"{user} – {last_name}, {first_name}"
+            student_label: str = STUDENT_LABEL_TEMPLATE.format(user=user, full_name=FULL_NAME_TEMPLATE.format(last_name=last_name, first_name=first_name))
             session_count: int = int(getattr(row, SESSIONS_SOURCE_COLUMN))
             grade_value: Optional[float]
             last_text: str
@@ -227,14 +234,14 @@ def build_risk_table(grouped_points: pd.DataFrame, participation_index: Dict[Tup
             last_activities.append(last_text)
 
     table_data: Dict[str, list] = {
-        "student": students,
-        "risk": risks,
-        "sessions": sessions,
-        "grade": grades,
-        "last_activity": last_activities,
+        STUDENT_TABLE_COLUMN: students,
+        RISK_TABLE_COLUMN: risks,
+        SESSIONS_COLUMN: sessions,
+        GRADE_COLUMN: grades,
+        LAST_ACTIVITY_TABLE_COLUMN: last_activities,
     }
     table: pd.DataFrame = pd.DataFrame(table_data)
-    sort_columns: List[str] = ["sessions", "student"]
+    sort_columns: List[str] = [SESSIONS_COLUMN, STUDENT_TABLE_COLUMN]
     result: pd.DataFrame = table.sort_values(by=sort_columns).reset_index(drop=True)
 
     return result
@@ -244,13 +251,13 @@ def describe_strength(value: float) -> str:
     strength: str
 
     if magnitude < NO_ASSOCIATION_LIMIT:
-        strength = "muy débil"
+        strength = STRENGTH_VERY_WEAK
     elif magnitude < WEAK_LIMIT:
-        strength = "débil"
+        strength = STRENGTH_WEAK
     elif magnitude < MODERATE_LIMIT:
-        strength = "moderada"
+        strength = STRENGTH_MODERATE
     else:
-        strength = "fuerte"
+        strength = STRENGTH_STRONG
 
     return strength
 
@@ -258,9 +265,9 @@ def describe_direction(value: float) -> str:
     direction: str
 
     if value >= 0:
-        direction = "positiva"
+        direction = DIRECTION_POSITIVE
     else:
-        direction = "negativa"
+        direction = DIRECTION_NEGATIVE
 
     return direction
 
@@ -272,8 +279,8 @@ def build_card(correlations: pd.DataFrame, subject: str) -> Dict[str, str]:
     value_text: str = format(pearson, VALUE_FORMAT)
     direction: str = describe_direction(value=pearson)
     strength: str = describe_strength(value=pearson)
-    detail: str = f"Asociación {direction} {strength}"
-    result: Dict[str, str] = {"title": CARD_TITLE, "value": value_text, "detail": detail}
+    detail: str = ASSOCIATION_DETAIL_TEMPLATE.format(direction=direction, strength=strength)
+    result: Dict[str, str] = {TITLE_KEY: CORRELATION_CARD_TITLE, VALUE_KEY: value_text, DETAIL_KEY: detail}
 
     return result
 
@@ -283,6 +290,7 @@ def add_pooled_rows(table: pd.DataFrame) -> pd.DataFrame:
 
     return result
 
+@st.cache_data(ttl=CACHE_TTL_SECONDS, show_spinner=SPINNER_BUILD_CORRELATION)
 def build_all() -> Dict[str, Dict[str, object]]:
     traceability: pd.DataFrame = load_enrolled_traceability()
     grades: pd.DataFrame = load_grades()
@@ -320,23 +328,13 @@ def build_all() -> Dict[str, Dict[str, object]]:
     risks[SUBJECT_ALL] = all_risks
 
     for subject_name in list(risks.keys()):
-        risks[subject_name] = sort_by_id_asc(risks[subject_name], "student")
+        risks[subject_name] = sort_by_id_asc(risks[subject_name], STUDENT_TABLE_COLUMN)
 
     result: Dict[str, Dict[str, object]] = {
-        "scatter": scatter,
-        "trend": trend,
-        "card": cards,
-        "risk": risks,
+        SCATTER_KEY: scatter,
+        TREND_KEY: trend,
+        CARD_KEY: cards,
+        RISK_TABLE_COLUMN: risks,
     }
 
     return result
-
-ALL_TABLES: Dict[str, Dict[str, object]] = build_all()
-
-SCATTER: Dict[str, pd.DataFrame] = ALL_TABLES["scatter"]
-
-TREND_LINE: Dict[str, pd.DataFrame] = ALL_TABLES["trend"]
-
-CORRELATION: Dict[str, Dict[str, str]] = ALL_TABLES["card"]
-
-RISK_STUDENTS: Dict[str, pd.DataFrame] = ALL_TABLES["risk"]

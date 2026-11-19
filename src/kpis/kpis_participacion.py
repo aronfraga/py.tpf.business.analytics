@@ -11,26 +11,77 @@ Las funciones de KPI son puras (reciben y devuelven DataFrames). Para calcular t
 
 La justificación y los controles de sensibilidad de cada KPI están en participacion.ipynb.
 """
+import sys
 from pathlib import Path
 
 import pandas as pd
+_SRC_PATH = str(Path(__file__).resolve().parents[1])
+if _SRC_PATH not in sys.path:
+    sys.path.append(_SRC_PATH)
+from constants import (
+    ACTIVE_COLUMN,
+    ACTIVE_COUNT_COLUMN,
+    ACTIVE_PERCENT_COLUMN,
+    ACTIVITY_DAYS_LIMIT,
+    AVERAGE_ACTIVE_COLUMN,
+    AVERAGE_ENROLLED_COLUMN,
+    AVERAGE_MINUTES_ACTIVE_COLUMN,
+    AVERAGE_MINUTES_ENROLLED_COLUMN,
+    COVERAGE_PERCENT_COLUMN,
+    CUTOFF_DATE_COLUMN,
+    DATA_PATH,
+    ENROLLED_COLUMN,
+    ENROLLED_COUNT_COLUMN,
+    ENROLLMENT_CROSS_FILE,
+    ESTIMATED_USAGE_MINUTES_COLUMN,
+    EVENT_DATE_COLUMN,
+    INACTIVE_COUNT_COLUMN,
+    INACTIVE_PERCENT_COLUMN,
+    INTEGRATED_FOLDER_NAME,
+    INTERACTIONS_COLUMN,
+    IS_ENROLLED_COLUMN,
+    KEY_COLUMNS,
+    KPI_ACTIVE_VS_INACTIVE,
+    KPI_AVERAGE_SESSIONS,
+    KPI_AVERAGE_TIME,
+    KPI_COVERAGE,
+    LAST_INTERACTION_COLUMN,
+    MEDIAN_ENROLLED_COLUMN,
+    MEDIAN_MINUTES_ENROLLED_COLUMN,
+    NEW_SESSION_COLUMN,
+    NOT_ENROLLED_WITH_ACTIVITY_COLUMN,
+    PARTICIPATES_COLUMN,
+    PARTICIPATION_FILE,
+    PARTICIPATION_THRESHOLD,
+    PERCENT_FACTOR,
+    ROUND_DECIMALS,
+    SECONDS_PER_DAY,
+    SESSIONS_SOURCE_COLUMN,
+    SESSION_GAP,
+    SUBJECT_COLUMN,
+    TIME_MINUTES_COLUMN,
+    TOTAL_STUDENTS_COLUMN,
+    TRACEABILITY_FILE,
+    USER_COLUMN,
+    WITH_PARTICIPATION_COLUMN,
+)
 
 # src/kpis/kpis_participacion.py -> raíz del proyecto -> data/
-DATOS_POR_DEFECTO = Path(__file__).resolve().parents[2] / "data"
+DATOS_POR_DEFECTO = DATA_PATH
 
-CLAVES = ["materia", "usuario"]
+CLAVES = KEY_COLUMNS
 
 # Una sesión termina cuando el estudiante pasa más de este tiempo sin generar eventos.
-UMBRAL_SESION = pd.Timedelta(minutes=30)
-UMBRAL_PARTICIPACION = 0  # interacciones que hay que superar para contar como participante
-DIAS_ACTIVIDAD = 15  # días máximos sin interacción para seguir considerándose activo
+UMBRAL_SESION = SESSION_GAP
+UMBRAL_PARTICIPACION = PARTICIPATION_THRESHOLD  # interacciones que hay que superar para contar como participante
+DIAS_ACTIVIDAD = ACTIVITY_DAYS_LIMIT  # días máximos sin interacción para seguir considerándose activo
 
 
 # ----------------------------------------------------------------------------
 # Auxiliares
 # ----------------------------------------------------------------------------
 def _matriculados(cruce: pd.DataFrame) -> pd.DataFrame:
-    return cruce.loc[cruce["matriculado"], CLAVES]
+    return cruce.loc[cruce[ENROLLED_COLUMN], CLAVES]
 
 
 def _universo_de_alumnos(participacion: pd.DataFrame, cruce: pd.DataFrame) -> pd.DataFrame:
@@ -39,7 +90,7 @@ def _universo_de_alumnos(participacion: pd.DataFrame, cruce: pd.DataFrame) -> pd
     El reporte de participación lista a todo el padrón de la plataforma en cada aula, así que
     quien no está matriculado y nunca participó no se cuenta.
     """
-    con_actividad = participacion.loc[participacion["interacciones"] > 0, CLAVES]
+    con_actividad = participacion.loc[participacion[INTERACTIONS_COLUMN] > 0, CLAVES]
     return pd.concat([_matriculados(cruce), con_actividad]).drop_duplicates()
 
 
@@ -57,16 +108,16 @@ def sesiones_por_estudiante(trazabilidad: pd.DataFrame, cruce: pd.DataFrame,
 
     Devuelve: materia, usuario, sesiones.
     """
-    eventos = trazabilidad.sort_values(CLAVES + ["fecha"])
-    brecha = eventos.groupby(CLAVES)["fecha"].diff()
+    eventos = trazabilidad.sort_values(CLAVES + [EVENT_DATE_COLUMN])
+    brecha = eventos.groupby(CLAVES)[EVENT_DATE_COLUMN].diff()
     # Un evento abre sesión nueva si es el primero del usuario (NaT) o si superó el umbral.
-    eventos = eventos.assign(nueva_sesion=brecha.isna() | (brecha > umbral))
-    sesiones = eventos.groupby(CLAVES)["nueva_sesion"].sum().astype(int).rename("sesiones")
+    eventos = eventos.assign(**{NEW_SESSION_COLUMN: brecha.isna() | (brecha > umbral)})
+    sesiones = eventos.groupby(CLAVES)[NEW_SESSION_COLUMN].sum().astype(int).rename(SESSIONS_SOURCE_COLUMN)
 
     return (
         _matriculados(cruce).merge(sesiones.reset_index(), on=CLAVES, how="left")
-        .fillna({"sesiones": 0})
-        .astype({"sesiones": int})
+        .fillna({SESSIONS_SOURCE_COLUMN: 0})
+        .astype({SESSIONS_SOURCE_COLUMN: int})
     )
 
 
@@ -79,16 +130,16 @@ def sesiones_promedio_por_estudiante(trazabilidad: pd.DataFrame, cruce: pd.DataF
     mediana_matriculados (robusta a usos extremos).
     """
     por_estudiante = sesiones_por_estudiante(trazabilidad, cruce, umbral)
-    activos = por_estudiante[por_estudiante["sesiones"] > 0]
+    activos = por_estudiante[por_estudiante[SESSIONS_SOURCE_COLUMN] > 0]
     return pd.DataFrame(
         {
-            "matriculados": por_estudiante.groupby("materia")["usuario"].nunique(),
-            "activos": activos.groupby("materia")["usuario"].nunique(),
-            "promedio_matriculados": por_estudiante.groupby("materia")["sesiones"].mean(),
-            "promedio_activos": activos.groupby("materia")["sesiones"].mean(),
-            "mediana_matriculados": por_estudiante.groupby("materia")["sesiones"].median(),
+            ENROLLED_COUNT_COLUMN: por_estudiante.groupby(SUBJECT_COLUMN)[USER_COLUMN].nunique(),
+            ACTIVE_COUNT_COLUMN: activos.groupby(SUBJECT_COLUMN)[USER_COLUMN].nunique(),
+            AVERAGE_ENROLLED_COLUMN: por_estudiante.groupby(SUBJECT_COLUMN)[SESSIONS_SOURCE_COLUMN].mean(),
+            AVERAGE_ACTIVE_COLUMN: activos.groupby(SUBJECT_COLUMN)[SESSIONS_SOURCE_COLUMN].mean(),
+            MEDIAN_ENROLLED_COLUMN: por_estudiante.groupby(SUBJECT_COLUMN)[SESSIONS_SOURCE_COLUMN].median(),
         }
-    ).round(2).reset_index()
+    ).round(ROUND_DECIMALS).reset_index()
 
 
 # ----------------------------------------------------------------------------
@@ -103,10 +154,10 @@ def tiempo_por_estudiante(participacion: pd.DataFrame, cruce: pd.DataFrame) -> p
 
     Devuelve: materia, usuario, tiempo_min.
     """
-    tiempo = participacion[CLAVES + ["tiempo_estimado_de_uso_min"]].rename(
-        columns={"tiempo_estimado_de_uso_min": "tiempo_min"}
+    tiempo = participacion[CLAVES + [ESTIMATED_USAGE_MINUTES_COLUMN]].rename(
+        columns={ESTIMATED_USAGE_MINUTES_COLUMN: TIME_MINUTES_COLUMN}
     )
-    return _matriculados(cruce).merge(tiempo, on=CLAVES, how="left").fillna({"tiempo_min": 0})
+    return _matriculados(cruce).merge(tiempo, on=CLAVES, how="left").fillna({TIME_MINUTES_COLUMN: 0})
 
 
 def tiempo_promedio_en_plataforma(participacion: pd.DataFrame, cruce: pd.DataFrame) -> pd.DataFrame:
@@ -117,16 +168,16 @@ def tiempo_promedio_en_plataforma(participacion: pd.DataFrame, cruce: pd.DataFra
     estudiantes con uso muy alto), por eso se incluye la mediana.
     """
     por_estudiante = tiempo_por_estudiante(participacion, cruce)
-    activos = por_estudiante[por_estudiante["tiempo_min"] > 0]
+    activos = por_estudiante[por_estudiante[TIME_MINUTES_COLUMN] > 0]
     return pd.DataFrame(
         {
-            "matriculados": por_estudiante.groupby("materia")["usuario"].nunique(),
-            "activos": activos.groupby("materia")["usuario"].nunique(),
-            "promedio_min_matriculados": por_estudiante.groupby("materia")["tiempo_min"].mean(),
-            "promedio_min_activos": activos.groupby("materia")["tiempo_min"].mean(),
-            "mediana_min_matriculados": por_estudiante.groupby("materia")["tiempo_min"].median(),
+            ENROLLED_COUNT_COLUMN: por_estudiante.groupby(SUBJECT_COLUMN)[USER_COLUMN].nunique(),
+            ACTIVE_COUNT_COLUMN: activos.groupby(SUBJECT_COLUMN)[USER_COLUMN].nunique(),
+            AVERAGE_MINUTES_ENROLLED_COLUMN: por_estudiante.groupby(SUBJECT_COLUMN)[TIME_MINUTES_COLUMN].mean(),
+            AVERAGE_MINUTES_ACTIVE_COLUMN: activos.groupby(SUBJECT_COLUMN)[TIME_MINUTES_COLUMN].mean(),
+            MEDIAN_MINUTES_ENROLLED_COLUMN: por_estudiante.groupby(SUBJECT_COLUMN)[TIME_MINUTES_COLUMN].median(),
         }
-    ).round(2).reset_index()
+    ).round(ROUND_DECIMALS).reset_index()
 
 
 # ----------------------------------------------------------------------------
@@ -134,7 +185,7 @@ def tiempo_promedio_en_plataforma(participacion: pd.DataFrame, cruce: pd.DataFra
 # ----------------------------------------------------------------------------
 def cobertura_participacion(participacion: pd.DataFrame, cruce: pd.DataFrame,
                             umbral: float = UMBRAL_PARTICIPACION,
-                            columna: str = "interacciones") -> pd.DataFrame:
+                            columna: str = INTERACTIONS_COLUMN) -> pd.DataFrame:
     """KPI: porcentaje de cobertura de participación, por asignatura.
 
     Cobertura = alumnos con `columna` > `umbral` / total de alumnos * 100. El total es el
@@ -151,18 +202,16 @@ def cobertura_participacion(participacion: pd.DataFrame, cruce: pd.DataFrame,
     universo = _universo_de_alumnos(participacion, cruce).merge(
         participacion[CLAVES + [columna]], on=CLAVES, how="left"
     ).fillna({columna: 0})
-    universo["es_matriculado"] = universo.set_index(CLAVES).index.isin(_matriculados(cruce).set_index(CLAVES).index)
-    universo["participa"] = universo[columna] > umbral
+    universo[IS_ENROLLED_COLUMN] = universo.set_index(CLAVES).index.isin(_matriculados(cruce).set_index(CLAVES).index)
+    universo[PARTICIPATES_COLUMN] = universo[columna] > umbral
 
-    resumen = universo.groupby("materia").agg(
-        total_alumnos=("usuario", "nunique"),
-        matriculados=("es_matriculado", "sum"),
-        con_participacion=("participa", "sum"),
+    resumen = universo.groupby(SUBJECT_COLUMN).agg(
+        **{TOTAL_STUDENTS_COLUMN: (USER_COLUMN, "nunique"), ENROLLED_COUNT_COLUMN: (IS_ENROLLED_COLUMN, "sum"), WITH_PARTICIPATION_COLUMN: (PARTICIPATES_COLUMN, "sum")},
     )
-    resumen["no_matriculados_con_actividad"] = resumen["total_alumnos"] - resumen["matriculados"]
-    resumen["cobertura_pct"] = (100 * resumen["con_participacion"] / resumen["total_alumnos"]).round(2)
+    resumen[NOT_ENROLLED_WITH_ACTIVITY_COLUMN] = resumen[TOTAL_STUDENTS_COLUMN] - resumen[ENROLLED_COUNT_COLUMN]
+    resumen[COVERAGE_PERCENT_COLUMN] = (PERCENT_FACTOR * resumen[WITH_PARTICIPATION_COLUMN] / resumen[TOTAL_STUDENTS_COLUMN]).round(ROUND_DECIMALS)
     return resumen[
-        ["total_alumnos", "matriculados", "no_matriculados_con_actividad", "con_participacion", "cobertura_pct"]
+        [TOTAL_STUDENTS_COLUMN, ENROLLED_COUNT_COLUMN, NOT_ENROLLED_WITH_ACTIVITY_COLUMN, WITH_PARTICIPATION_COLUMN, COVERAGE_PERCENT_COLUMN]
     ].reset_index()
 
 
@@ -185,20 +234,20 @@ def estudiantes_activos_vs_inactivos(participacion: pd.DataFrame, cruce: pd.Data
     pct_inactivos, fecha_corte.
     """
     if fecha_corte is None:
-        fecha_corte = participacion["ultima_interaccion"].max()
+        fecha_corte = participacion[LAST_INTERACTION_COLUMN].max()
 
     universo = _universo_de_alumnos(participacion, cruce).merge(
-        participacion[CLAVES + ["ultima_interaccion"]], on=CLAVES, how="left"
+        participacion[CLAVES + [LAST_INTERACTION_COLUMN]], on=CLAVES, how="left"
     )
-    dias_sin_interaccion = (fecha_corte - universo["ultima_interaccion"]).dt.total_seconds() / 86400
+    dias_sin_interaccion = (fecha_corte - universo[LAST_INTERACTION_COLUMN]).dt.total_seconds() / SECONDS_PER_DAY
     # NaN (nunca interactuó) compara como False -> inactivo
-    universo["activo"] = dias_sin_interaccion <= dias
+    universo[ACTIVE_COLUMN] = dias_sin_interaccion <= dias
 
-    resumen = universo.groupby("materia")["activo"].agg(total_alumnos="size", activos="sum")
-    resumen["inactivos"] = resumen["total_alumnos"] - resumen["activos"]
-    resumen["pct_activos"] = (100 * resumen["activos"] / resumen["total_alumnos"]).round(2)
-    resumen["pct_inactivos"] = (100 - resumen["pct_activos"]).round(2)
-    resumen["fecha_corte"] = fecha_corte.normalize()
+    resumen = universo.groupby(SUBJECT_COLUMN)[ACTIVE_COLUMN].agg(**{TOTAL_STUDENTS_COLUMN: "size", ACTIVE_COUNT_COLUMN: "sum"})
+    resumen[INACTIVE_COUNT_COLUMN] = resumen[TOTAL_STUDENTS_COLUMN] - resumen[ACTIVE_COUNT_COLUMN]
+    resumen[ACTIVE_PERCENT_COLUMN] = (PERCENT_FACTOR * resumen[ACTIVE_COUNT_COLUMN] / resumen[TOTAL_STUDENTS_COLUMN]).round(ROUND_DECIMALS)
+    resumen[INACTIVE_PERCENT_COLUMN] = (PERCENT_FACTOR - resumen[ACTIVE_PERCENT_COLUMN]).round(ROUND_DECIMALS)
+    resumen[CUTOFF_DATE_COLUMN] = fecha_corte.normalize()
     return resumen.reset_index()
 
 
@@ -212,13 +261,13 @@ def calcular_kpis_participacion(datos=None, umbral_sesion: pd.Timedelta = UMBRAL
 
     Claves: sesiones_promedio, tiempo_promedio, cobertura, activos_vs_inactivos.
     """
-    integrado = (Path(datos) if datos else DATOS_POR_DEFECTO) / "integrado"
-    trazabilidad = pd.read_parquet(integrado / "trazabilidad_integrado.parquet", columns=CLAVES + ["fecha"])
-    participacion = pd.read_parquet(integrado / "participacion_integrado.parquet")
-    cruce = pd.read_parquet(integrado / "cruce_matriculados_integrado.parquet")
+    integrado = (Path(datos) if datos else DATOS_POR_DEFECTO) / INTEGRATED_FOLDER_NAME
+    trazabilidad = pd.read_parquet(integrado / TRACEABILITY_FILE, columns=CLAVES + [EVENT_DATE_COLUMN])
+    participacion = pd.read_parquet(integrado / PARTICIPATION_FILE)
+    cruce = pd.read_parquet(integrado / ENROLLMENT_CROSS_FILE)
     return {
-        "sesiones_promedio": sesiones_promedio_por_estudiante(trazabilidad, cruce, umbral_sesion),
-        "tiempo_promedio": tiempo_promedio_en_plataforma(participacion, cruce),
-        "cobertura": cobertura_participacion(participacion, cruce, umbral_participacion),
-        "activos_vs_inactivos": estudiantes_activos_vs_inactivos(participacion, cruce, dias_actividad),
+        KPI_AVERAGE_SESSIONS: sesiones_promedio_por_estudiante(trazabilidad, cruce, umbral_sesion),
+        KPI_AVERAGE_TIME: tiempo_promedio_en_plataforma(participacion, cruce),
+        KPI_COVERAGE: cobertura_participacion(participacion, cruce, umbral_participacion),
+        KPI_ACTIVE_VS_INACTIVE: estudiantes_activos_vs_inactivos(participacion, cruce, dias_actividad),
     }

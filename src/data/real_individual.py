@@ -1,11 +1,9 @@
 from typing import Any, Dict, List, Optional, Tuple
 
 import pandas as pd
+import streamlit as st
 
 from data.real_common import (
-    SUBJECT_ALL,
-    SUBJECT_KEYS,
-    SUBJECTS,
     load_enrolled_traceability,
     load_enrollment_cross,
     load_grades,
@@ -14,52 +12,54 @@ from data.real_common import (
 )
 from kpis.kpis_calificaciones import condicion_por_estudiante, nota_por_estudiante
 from kpis.kpis_trazabilidad import TIPOS, clasificar_interacciones, frecuencia_ingreso
-
-SUBJECT_COLUMN: str = "materia"
-USER_COLUMN: str = "usuario"
-ENROLLED_COLUMN: str = "matriculado"
-LAST_NAME_COLUMN: str = "apellido"
-FIRST_NAME_COLUMN: str = "nombre"
-INSTRUMENT_SOURCE_COLUMN: str = "instrumento"
-FILE_ID_COLUMN: str = "id_archivo"
-OBTAINED_COLUMN: str = "nota_obtenida"
-MAXIMUM_COLUMN: str = "nota_max"
-CONDITION_COLUMN: str = "condicion"
-PERCENT_COLUMN: str = "nota_pct"
-SUBJECT_NAME_COLUMN: str = "subject"
-PERIOD_COLUMN: str = "periodo"
-ENTRIES_COLUMN: str = "ingresos"
-INSTRUMENT_COLUMN: str = "instrument"
-GRADE_COLUMN: str = "grade"
-WEEK_COLUMN: str = "week"
-SESSIONS_COLUMN: str = "sessions"
-
-WEEKLY_FREQUENCY: str = "W"
-WEEK_PREFIX: str = "Sem"
-SCALE_FACTOR: float = 10.0
-GRADE_DECIMALS: int = 1
-
-GREEN: str = "green"
-YELLOW: str = "yellow"
-RED: str = "red"
-GRAY: str = "gray"
-NOT_ENROLLED_TEXT: str = "No inscripto"
-
-CONDITION_COLORS: Dict[str, str] = {
-    "promocionado": GREEN,
-    "regular": YELLOW,
-    "libre": RED,
-}
-
-CONDITION_TEXTS: Dict[str, str] = {
-    "promocionado": "Promociona",
-    "regular": "Regular",
-    "libre": "Libre",
-}
-
-NOT_PRESENTED_TEXT: str = "No se presentó"
-
-GRADES_LABELS: Dict[str, str] = {"instrument": "Instrumento", "grade": "Nota"}
+from constants import (
+    ACTION_COLUMN,
+    CACHE_TTL_SECONDS,
+    CONDITION_COLUMN,
+    CONDITION_LABELS,
+    CONDITION_TRAFFIC_COLORS,
+    COUNT_COLUMN,
+    ENROLLED_COLUMN,
+    ENTRIES_COLUMN,
+    FILE_ID_COLUMN,
+    FIRST_NAME_COLUMN,
+    FULL_NAME_TEMPLATE,
+    GRADES_KEY,
+    GRADE_COLUMN,
+    GRADE_PERCENT_COLUMN,
+    INDIVIDUAL_GRADE_DECIMALS,
+    INSTRUMENT_COLUMN,
+    INSTRUMENT_SOURCE_COLUMN,
+    LAST_NAME_COLUMN,
+    MAXIMUM_COLUMN,
+    NOT_ENROLLED_KEY,
+    NOT_ENROLLED_LABEL,
+    NOT_PRESENTED_LABEL,
+    NO_GRADES_KEY,
+    OBTAINED_COLUMN,
+    PARTICIPATION_KEY,
+    PARTICIPATION_SERIES_KEY,
+    PERIOD_COLUMN,
+    SCALE_DIVISOR,
+    SESSIONS_COLUMN,
+    SPINNER_BUILD_INDIVIDUAL,
+    STUDENT_LABEL_TEMPLATE,
+    SUBJECTS,
+    SUBJECT_ALL,
+    SUBJECT_COLUMN,
+    SUBJECT_KEYS,
+    SUBJECT_NAME_COLUMN,
+    TRACEABILITY_KEY,
+    TRAFFIC_GRAY,
+    TRAFFIC_LIGHTS_KEY,
+    TRAFFIC_LIGHT_PERCENT_TEMPLATE,
+    TRAFFIC_RED,
+    USER_COLUMN,
+    WEEKLY_FREQUENCY,
+    WEEK_COLUMN,
+    WEEK_LABEL_TEMPLATE,
+    WEEK_PREFIX,
+)
 
 def build_names(participation: pd.DataFrame) -> Dict[Tuple[str, str], str]:
     names: Dict[Tuple[str, str], str] = {}
@@ -69,7 +69,7 @@ def build_names(participation: pd.DataFrame) -> Dict[Tuple[str, str], str]:
         user: str = getattr(row, USER_COLUMN)
         last_name: str = getattr(row, LAST_NAME_COLUMN)
         first_name: str = getattr(row, FIRST_NAME_COLUMN)
-        full_name: str = f"{last_name}, {first_name}"
+        full_name: str = FULL_NAME_TEMPLATE.format(last_name=last_name, first_name=first_name)
         pair: Tuple[str, str] = (subject_key, user)
         names[pair] = full_name
 
@@ -101,8 +101,8 @@ def build_grades_table(student_grades: Optional[pd.DataFrame]) -> pd.DataFrame:
             obtained: float = float(getattr(row, OBTAINED_COLUMN))
             maximum: float = float(getattr(row, MAXIMUM_COLUMN))
             ratio: float = obtained / maximum
-            scaled: float = ratio * SCALE_FACTOR
-            rounded: float = round(scaled, GRADE_DECIMALS)
+            scaled: float = ratio * SCALE_DIVISOR
+            rounded: float = round(scaled, INDIVIDUAL_GRADE_DECIMALS)
             instruments.append(instrument)
             values.append(rounded)
 
@@ -130,7 +130,7 @@ def build_participation_table(student_traceability: Optional[pd.DataFrame], peri
     week_number: int = 1
 
     for period_label in periods:
-        week_label: str = f"{WEEK_PREFIX} {week_number}"
+        week_label: str = WEEK_LABEL_TEMPLATE.format(prefix=WEEK_PREFIX, number=week_number)
         period_entries: int = entries_by_period.get(period_label, 0)
         weeks.append(week_label)
         sessions.append(period_entries)
@@ -160,8 +160,8 @@ def build_traceability_table(student_traceability: Optional[pd.DataFrame]) -> pd
     actions: List[str] = list(counts.keys())
     values: List[int] = list(counts.values())
     table_data: Dict[str, list] = {
-        "action": actions,
-        "count": values,
+        ACTION_COLUMN: actions,
+        COUNT_COLUMN: values,
     }
     result: pd.DataFrame = pd.DataFrame(table_data)
 
@@ -175,7 +175,7 @@ def build_percents(grades: pd.DataFrame) -> Dict[Tuple[str, str], float]:
         subject_key: str = getattr(row, SUBJECT_COLUMN)
         user: str = getattr(row, USER_COLUMN)
         pair: Tuple[str, str] = (subject_key, user)
-        percents[pair] = float(getattr(row, PERCENT_COLUMN))
+        percents[pair] = float(getattr(row, GRADE_PERCENT_COLUMN))
 
     return percents
 
@@ -184,14 +184,14 @@ def build_traffic_light(condition: Optional[str], percent: Optional[float] = Non
     text: str
 
     if condition is None:
-        color = RED
-        text = NOT_PRESENTED_TEXT
+        color = TRAFFIC_RED
+        text = NOT_PRESENTED_LABEL
     else:
-        color = CONDITION_COLORS[condition]
-        text = CONDITION_TEXTS[condition]
+        color = CONDITION_TRAFFIC_COLORS[condition]
+        text = CONDITION_LABELS[condition]
 
     if percent is not None:
-        text = f"{text} · {round(percent)}%"
+        text = TRAFFIC_LIGHT_PERCENT_TEMPLATE.format(text=text, percent=round(percent))
 
     result: Tuple[str, str] = (color, text)
 
@@ -230,32 +230,37 @@ def build_all_subjects_entry(entries: Dict[str, Dict[str, Any]]) -> Dict[str, An
     for subject in SUBJECTS:
         if subject not in entries:
             not_enrolled.append(subject)
-            lights.append((subject, GRAY, NOT_ENROLLED_TEXT))
+            lights.append((subject, TRAFFIC_GRAY, NOT_ENROLLED_LABEL))
             continue
 
         entry: Dict[str, Any] = entries[subject]
-        grade_tables.append(entry["grades"].assign(**{SUBJECT_NAME_COLUMN: subject}))
-        participation_series[subject] = entry["participation"]
-        traceability_tables.append(entry["traceability"])
-        light: Tuple[Optional[str], str, str] = entry["traffic_lights"][0]
-        lights.append((subject, light[1], light[2]))
+        grade_tables.append(entry[GRADES_KEY].assign(**{SUBJECT_NAME_COLUMN: subject}))
+        participation_series[subject] = entry[PARTICIPATION_KEY]
+        traceability_tables.append(entry[TRACEABILITY_KEY])
+        light: Tuple[Optional[str], str, str] = entry[TRAFFIC_LIGHTS_KEY][0]
+        light_subject: Optional[str]
+        light_color: str
+        light_text: str
+        light_subject, light_color, light_text = light
+        lights.append((subject, light_color, light_text))
 
-        if len(entry["grades"]) == 0:
+        if len(entry[GRADES_KEY]) == 0:
             no_grades.append(subject)
 
     grades_all: pd.DataFrame = pd.concat(grade_tables, ignore_index=True)
-    traceability_all: pd.DataFrame = sum_tables(traceability_tables, ["action"], ["count"])
+    traceability_all: pd.DataFrame = sum_tables(traceability_tables, [ACTION_COLUMN], [COUNT_COLUMN])
     result: Dict[str, Any] = {
-        "grades": grades_all,
-        "participation_series": participation_series,
-        "traceability": traceability_all,
-        "traffic_lights": lights,
-        "no_grades": no_grades,
-        "not_enrolled": not_enrolled,
+        GRADES_KEY: grades_all,
+        PARTICIPATION_SERIES_KEY: participation_series,
+        TRACEABILITY_KEY: traceability_all,
+        TRAFFIC_LIGHTS_KEY: lights,
+        NO_GRADES_KEY: no_grades,
+        NOT_ENROLLED_KEY: not_enrolled,
     }
 
     return result
 
+@st.cache_data(ttl=CACHE_TTL_SECONDS, show_spinner=SPINNER_BUILD_INDIVIDUAL)
 def build_all() -> Tuple[List[str], Dict[str, Dict[str, Dict[str, Any]]], Dict[str, List[str]]]:
     participation: pd.DataFrame = load_participation()
     grades: pd.DataFrame = load_grades()
@@ -281,7 +286,7 @@ def build_all() -> Tuple[List[str], Dict[str, Dict[str, Dict[str, Any]]], Dict[s
         for user in users:
             pair: Tuple[str, str] = (subject_key, user)
             full_name: str = names[pair]
-            labels_by_user.setdefault(user, f"{user} – {full_name}")
+            labels_by_user.setdefault(user, STUDENT_LABEL_TEMPLATE.format(user=user, full_name=full_name))
             grades_table: pd.DataFrame = build_grades_table(student_grades=grade_groups.get(pair))
             participation_table: pd.DataFrame = build_participation_table(student_traceability=traceability_groups.get(pair), periods=periods)
             traceability_table: pd.DataFrame = build_traceability_table(student_traceability=traceability_groups.get(pair))
@@ -289,10 +294,10 @@ def build_all() -> Tuple[List[str], Dict[str, Dict[str, Dict[str, Any]]], Dict[s
             text: str
             color, text = build_traffic_light(condition=conditions.get(pair), percent=percents.get(pair))
             entry: Dict[str, Any] = {
-                "grades": grades_table,
-                "participation": participation_table,
-                "traceability": traceability_table,
-                "traffic_lights": [(None, color, text)],
+                GRADES_KEY: grades_table,
+                PARTICIPATION_KEY: participation_table,
+                TRACEABILITY_KEY: traceability_table,
+                TRAFFIC_LIGHTS_KEY: [(None, color, text)],
             }
             subject_entries.setdefault(user, {})[subject] = entry
 
@@ -310,11 +315,3 @@ def build_all() -> Tuple[List[str], Dict[str, Dict[str, Dict[str, Any]]], Dict[s
     result: Tuple[List[str], Dict[str, Dict[str, Dict[str, Any]]], Dict[str, List[str]]] = (options, student_data, student_subjects)
 
     return result
-
-ALL_STUDENTS: Tuple[List[str], Dict[str, Dict[str, Dict[str, Any]]], Dict[str, List[str]]] = build_all()
-
-STUDENTS: List[str] = ALL_STUDENTS[0]
-
-STUDENT_DATA: Dict[str, Dict[str, Dict[str, Any]]] = ALL_STUDENTS[1]
-
-STUDENT_SUBJECTS: Dict[str, List[str]] = ALL_STUDENTS[2]

@@ -3,13 +3,16 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 from streamlit.delta_generator import DeltaGenerator
-from data.real_common import SUBJECT_ALL
-from data.real_individual import GRADES_LABELS, STUDENT_DATA, STUDENT_SUBJECTS, STUDENTS
+from data.real_individual import build_all
 from ui.components.charts import bar_chart, bar_chart_by_subject, horizontal_bar_chart, line_chart, multi_line_chart, show_figure
 from ui.components.filters import selector
 from ui.components.tables import table
 from ui.components.texts import section_title
 from ui.components.traffic_light import traffic_light
+from constants import (
+    GRADES_LABELS,
+    SUBJECT_ALL,
+)
 
 ALL_GRADES_LABELS: Dict[str, str] = {"subject": "Asignatura", "instrument": "Instrumento", "grade": "Nota"}
 
@@ -29,6 +32,11 @@ def show() -> None:
     page_title: str = "Individual"
     st.title(page_title)
 
+    students: List[str]
+    student_data: Dict[str, Dict[str, Dict[str, Any]]]
+    student_subjects: Dict[str, List[str]]
+    students, student_data, student_subjects = build_all()
+
     column_count: int = 2
     student_column: DeltaGenerator
     subject_column: DeltaGenerator
@@ -39,12 +47,12 @@ def show() -> None:
     subject_key_prefix: str = "individual_subject_"
 
     with student_column:
-        student: str = selector(student_label, STUDENTS, student_key)
+        student: str = selector(student_label, students, student_key)
     with subject_column:
-        subject_options: List[str] = [SUBJECT_ALL] + STUDENT_SUBJECTS[student]
+        subject_options: List[str] = [SUBJECT_ALL] + student_subjects[student]
         subject: str = selector(subject_label, subject_options, subject_key_prefix + student)
 
-    data: Dict[str, Any] = STUDENT_DATA[student][subject]
+    data: Dict[str, Any] = student_data[student][subject]
     is_all: bool = subject == SUBJECT_ALL
     grades: pd.DataFrame = data["grades"]
     traceability: pd.DataFrame = data["traceability"]

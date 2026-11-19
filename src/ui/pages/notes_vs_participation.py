@@ -3,25 +3,30 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 from streamlit.delta_generator import DeltaGenerator
-from data.real_common import SUBJECT_OPTIONS
-from data.real_correlation import CORRELATION, RISK_LABELS, RISK_STUDENTS, SCATTER, TREND_LINE
+from data.real_correlation import build_all
 from ui.components.cards import kpi_card
 from ui.components.charts import scatter_by_group, show_figure
 from ui.components.filters import selector
 from ui.components.tables import table
 from ui.components.texts import section_title
+from constants import (
+    RISK_LABELS,
+    SUBJECT_OPTIONS,
+)
 
 def show() -> None:
     page_title: str = "Notas vs Participación"
     st.title(page_title)
 
+    tables: Dict[str, Dict[str, object]] = build_all()
+
     subject_label: str = "Asignatura"
     subject_key: str = "correlation_subject"
     subject: str = selector(subject_label, SUBJECT_OPTIONS, subject_key)
-    points: pd.DataFrame = SCATTER[subject]
-    trend: pd.DataFrame = TREND_LINE[subject]
-    card: Dict[str, str] = CORRELATION[subject]
-    risk: pd.DataFrame = RISK_STUDENTS[subject]
+    points: pd.DataFrame = tables["scatter"][subject]
+    trend: pd.DataFrame = tables["trend"][subject]
+    card: Dict[str, str] = tables["card"][subject]
+    risk: pd.DataFrame = tables["risk"][subject]
     section: str = "Relación entre tiempo en la plataforma y notas"
 
     section_title(section)

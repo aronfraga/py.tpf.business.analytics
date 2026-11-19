@@ -261,34 +261,6 @@ div[data-testid="stDataFrame"] {
 }
 
 /* ------------------------------------------------------------------
-   Textos de interpretación
-   ------------------------------------------------------------------ */
-.interpretation {
-  background: var(--c-surface);
-  border: 1px solid var(--c-border);
-  border-left: 5px solid var(--c-primary);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  margin: 1.2rem 0 0.4rem 0;
-  padding: 0.9rem 1.2rem;
-}
-
-.interpretation-label {
-  color: var(--c-accent);
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.interpretation-text {
-  color: var(--c-text);
-  font-size: 0.95rem;
-  line-height: 1.5;
-  margin: 0.3rem 0 0 0;
-}
-
-/* ------------------------------------------------------------------
    Semáforo como luces navideñas
    ------------------------------------------------------------------ */
 .traffic-light {

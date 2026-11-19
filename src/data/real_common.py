@@ -1,32 +1,31 @@
-from pathlib import Path
-from typing import Dict, List
+from typing import List
 
 import pandas as pd
 import streamlit as st
 
 from kpis.kpis_trazabilidad import cargar_trazabilidad, marcar_ingresos
-
-ALGEBRA: str = "Álgebra"
-ALGORITHMS: str = "Algoritmos y Estructuras de Datos"
-PROBABILITY: str = "Probabilidad y Estadística"
-
-SUBJECTS: List[str] = [ALGEBRA, ALGORITHMS, PROBABILITY]
-
-ALGEBRA_KEY: str = "algebra"
-ALGORITHMS_KEY: str = "algoritmos"
-PROBABILITY_KEY: str = "probabilidad"
-
-SUBJECT_ALL: str = "Todas las asignaturas"
-ALL_KEY: str = "todas"
-
-SUBJECT_OPTIONS: List[str] = [SUBJECT_ALL] + SUBJECTS
-
-SUBJECT_KEYS: Dict[str, str] = {
-    ALGEBRA: ALGEBRA_KEY,
-    ALGORITHMS: ALGORITHMS_KEY,
-    PROBABILITY: PROBABILITY_KEY,
-    SUBJECT_ALL: ALL_KEY,
-}
+from constants import (
+    ANCHOR_DATE,
+    CACHE_TTL_SECONDS,
+    DATA_PATH,
+    DATA_START_DATE,
+    ENROLLMENT_CROSS_FILE,
+    ENROLLMENT_LIST_FILE,
+    GRADES_FILE,
+    INACTIVITY_MINUTES,
+    INTEGRATED_PATH,
+    PARTICIPATION_FILE,
+    RANGE_ALL,
+    RANGE_DAYS,
+    SPINNER_LOAD_ENROLLMENT_CROSS,
+    SPINNER_LOAD_ENROLLMENT_LIST,
+    SPINNER_LOAD_GRADES,
+    SPINNER_LOAD_PARTICIPATION,
+    SPINNER_LOAD_TRACEABILITY_ALL,
+    SPINNER_LOAD_TRACEABILITY_ENROLLED,
+    SUBJECT_ALL,
+    SUBJECT_KEYS,
+)
 
 def select_subject(frame: pd.DataFrame, column: str, subject: str) -> pd.DataFrame:
     if subject == SUBJECT_ALL:
@@ -48,42 +47,6 @@ def sum_tables(tables: List[pd.DataFrame], key_columns: List[str], value_columns
 
     return grouped
 
-KEY_SUBJECTS: Dict[str, str] = {
-    ALGEBRA_KEY: ALGEBRA,
-    ALGORITHMS_KEY: ALGORITHMS,
-    PROBABILITY_KEY: PROBABILITY,
-}
-
-RANGE_ALL: str = "Todo el período"
-RANGE_4_WEEKS: str = "Últimas 4 semanas"
-RANGE_2_WEEKS: str = "Últimas 2 semanas"
-
-DATE_RANGES: List[str] = [RANGE_ALL, RANGE_4_WEEKS, RANGE_2_WEEKS]
-
-DAYS_4_WEEKS: int = 28
-DAYS_2_WEEKS: int = 14
-
-RANGE_DAYS: Dict[str, int] = {
-    RANGE_4_WEEKS: DAYS_4_WEEKS,
-    RANGE_2_WEEKS: DAYS_2_WEEKS,
-}
-
-ANCHOR_DATE: pd.Timestamp = pd.Timestamp("2025-10-24")
-DATA_START_DATE: pd.Timestamp = pd.Timestamp("2025-08-05")
-
-CURRENT_FILE: Path = Path(__file__)
-RESOLVED_FILE: Path = CURRENT_FILE.resolve()
-PROJECT_ROOT: Path = RESOLVED_FILE.parents[2]
-DATA_PATH: Path = PROJECT_ROOT / "data"
-
-INACTIVITY_MINUTES: int = 30
-
-INTEGRATED_PATH: Path = DATA_PATH / "integrado"
-PARTICIPATION_FILE: str = "participacion_integrado.parquet"
-GRADES_FILE: str = "calificaciones_integrado.parquet"
-ENROLLMENT_CROSS_FILE: str = "cruce_matriculados_integrado.parquet"
-ENROLLMENT_LIST_FILE: str = "matriculados_integrado.parquet"
-
 def window_start(range_label: str) -> pd.Timestamp:
     result: pd.Timestamp
 
@@ -97,35 +60,35 @@ def window_start(range_label: str) -> pd.Timestamp:
 
     return result
 
-@st.cache_data
+@st.cache_data(ttl=CACHE_TTL_SECONDS, show_spinner=SPINNER_LOAD_PARTICIPATION)
 def load_participation() -> pd.DataFrame:
     file_path: Path = INTEGRATED_PATH / PARTICIPATION_FILE
     participation: pd.DataFrame = pd.read_parquet(file_path)
 
     return participation
 
-@st.cache_data
+@st.cache_data(ttl=CACHE_TTL_SECONDS, show_spinner=SPINNER_LOAD_GRADES)
 def load_grades() -> pd.DataFrame:
     file_path: Path = INTEGRATED_PATH / GRADES_FILE
     grades: pd.DataFrame = pd.read_parquet(file_path)
 
     return grades
 
-@st.cache_data
+@st.cache_data(ttl=CACHE_TTL_SECONDS, show_spinner=SPINNER_LOAD_ENROLLMENT_CROSS)
 def load_enrollment_cross() -> pd.DataFrame:
     file_path: Path = INTEGRATED_PATH / ENROLLMENT_CROSS_FILE
     cross: pd.DataFrame = pd.read_parquet(file_path)
 
     return cross
 
-@st.cache_data
+@st.cache_data(ttl=CACHE_TTL_SECONDS, show_spinner=SPINNER_LOAD_ENROLLMENT_LIST)
 def load_enrollment_list() -> pd.DataFrame:
     file_path: Path = INTEGRATED_PATH / ENROLLMENT_LIST_FILE
     enrollment_list: pd.DataFrame = pd.read_parquet(file_path)
 
     return enrollment_list
 
-@st.cache_data
+@st.cache_data(ttl=CACHE_TTL_SECONDS, show_spinner=SPINNER_LOAD_TRACEABILITY_ALL)
 def load_all_traceability() -> pd.DataFrame:
     only_enrolled: bool = False
     loaded: pd.DataFrame = cargar_trazabilidad(datos=DATA_PATH, solo_matriculados=only_enrolled)
@@ -133,7 +96,7 @@ def load_all_traceability() -> pd.DataFrame:
 
     return marked
 
-@st.cache_data
+@st.cache_data(ttl=CACHE_TTL_SECONDS, show_spinner=SPINNER_LOAD_TRACEABILITY_ENROLLED)
 def load_enrolled_traceability() -> pd.DataFrame:
     only_enrolled: bool = True
     loaded: pd.DataFrame = cargar_trazabilidad(datos=DATA_PATH, solo_matriculados=only_enrolled)

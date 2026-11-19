@@ -168,26 +168,6 @@ def heatmap(table: pd.DataFrame, title: str, x_title: str, y_title: str) -> go.F
     
     return result
 
-def scatter_with_trend(points: pd.DataFrame, trend: pd.DataFrame, x_column: str, y_column: str, title: str, x_title: str, y_title: str) -> go.Figure:
-    points_x: List[Any] = points[x_column].tolist()
-    points_y: List[Any] = points[y_column].tolist()
-    trend_x: List[Any] = trend[x_column].tolist()
-    trend_y: List[Any] = trend[y_column].tolist()
-    points_name: str = "Estudiantes"
-    points_mode: str = "markers"
-    points_marker: Dict[str, Any] = {"size": 11, "opacity": 0.85}
-    points_trace: go.Scatter = go.Scatter(name=points_name, x=points_x, y=points_y, mode=points_mode, marker=points_marker)
-    trend_name: str = "Tendencia"
-    trend_mode: str = "lines"
-    trend_line: Dict[str, Any] = {"width": 3, "dash": "dash", "color": "#D4A017"}
-    trend_trace: go.Scatter = go.Scatter(name=trend_name, x=trend_x, y=trend_y, mode=trend_mode, line=trend_line)
-    traces: List[go.Scatter] = [points_trace, trend_trace]
-    figure: go.Figure = go.Figure(data=traces)
-    
-    result: go.Figure = apply_template(figure, title, x_title, y_title)
-    
-    return result
-
 def scatter_by_group(points: pd.DataFrame, trend: pd.DataFrame, x_column: str, y_column: str, group_column: str, title: str, x_title: str, y_title: str) -> go.Figure:
     figure: go.Figure = go.Figure()
     points_mode: str = "markers"

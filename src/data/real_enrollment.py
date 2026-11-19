@@ -1,11 +1,9 @@
 from typing import Any, Dict, List, Tuple
 
 import pandas as pd
+import streamlit as st
 
 from data.real_common import (
-    SUBJECT_ALL,
-    SUBJECT_KEYS,
-    SUBJECTS,
     load_all_traceability,
     load_enrollment_cross,
     load_enrollment_list,
@@ -14,47 +12,68 @@ from data.real_common import (
     sum_tables,
 )
 from kpis.kpis_matricula import estudiantes_activos, resumen_activos_por_matricula
-
-SUBJECT_COLUMN: str = "materia"
-USER_COLUMN: str = "usuario"
-ENROLLED_COLUMN: str = "matriculado"
-ENTRY_COLUMN: str = "es_ingreso"
-INTERACTIONS_COLUMN: str = "interacciones"
-LAST_INTERACTION_COLUMN: str = "ultima_interaccion"
-LAST_NAME_COLUMN: str = "apellido"
-FIRST_NAME_COLUMN: str = "nombre"
-ENROLLMENT_DATE_COLUMN: str = "fecha_inscripcion"
-ENROLLED_ACTIVE_COLUMN: str = "matriculados_activos"
-NOT_ENROLLED_ACTIVE_COLUMN: str = "no_matriculados_activos"
-FLAG_NOT_ENROLLED_ACTIVE: str = "activo_no_inscripto"
-FLAG_ACTIVE_WITH_DROP: str = "activo_con_baja"
-FLAG_ENROLLED_WITHOUT_ACTIVITY: str = "inscripto_sin_actividad"
-
-DATE_FORMAT: str = "%Y-%m-%d"
-NEVER_TEXT: str = "Nunca"
-
-ALERT_ACTIVE_WITH_DROP: str = "Matriculados dados de baja"
-ALERT_NO_ENTRIES: str = "Sin ingresos"
-ALERT_NOT_ENROLLED_ACTIVE: str = "No inscripto activo"
-
-NOT_ENROLLED_ACTIVE_LABELS: Dict[str, str] = {
-    "user": "Usuario",
-    "sessions": "Sesiones",
-    "last_activity": "Última actividad",
-}
-
-ENROLLED_NO_PARTICIPATION_LABELS: Dict[str, str] = {
-    "student": "Estudiante",
-    "subject": "Asignatura",
-    "enrollment_date": "Fecha de inscripción",
-    "last_access": "Último acceso",
-}
-
-ALERTS_LABELS: Dict[str, str] = {
-    "student": "Estudiante",
-    "alert": "Alerta",
-    "detail": "Detalle",
-}
+from constants import (
+    ACTIVE_LABEL,
+    ACTIVE_OF_ENROLLED_DETAIL_TEMPLATE,
+    ALERTS_KEY,
+    ALERTS_LABEL,
+    ALERT_ACTIVE_WITH_DROP,
+    ALERT_DROP_DETAIL_TEMPLATE,
+    ALERT_NOT_ENROLLED_ACTIVE,
+    ALERT_NOT_ENROLLED_DETAIL_TEMPLATE,
+    ALERT_NO_ENTRIES,
+    ALERT_NO_ENTRIES_DETAIL,
+    ALERT_TABLE_COLUMN,
+    CACHE_TTL_SECONDS,
+    CARDS_KEY,
+    CARD_ALERTS_DETAIL,
+    CARD_NEVER_ENTERED_DETAIL,
+    CARD_NO_ENROLLMENT_DETAIL,
+    CARD_OFFICIAL_ENROLLMENTS_DETAIL,
+    COUNT_COLUMN,
+    DATE_FORMAT,
+    DETAIL_KEY,
+    ENROLLED_ACTIVE_COLUMN,
+    ENROLLED_COLUMN,
+    ENROLLED_LABEL,
+    ENROLLED_WITH_ACTIVITY_LABEL,
+    ENROLLED_NO_PARTICIPATION_TITLE,
+    ENROLLED_VS_ACTIVE_KEY,
+    ENROLLMENT_DATE_COLUMN,
+    ENROLLMENT_DATE_TABLE_COLUMN,
+    ENTRY_COLUMN,
+    FIRST_NAME_COLUMN,
+    FLAG_ACTIVE_WITH_DROP,
+    FLAG_ENROLLED_WITHOUT_ACTIVITY,
+    FLAG_NOT_ENROLLED_ACTIVE,
+    FULL_NAME_TEMPLATE,
+    INTERACTIONS_COLUMN,
+    LAST_ACCESS_TABLE_COLUMN,
+    LAST_ACTIVITY_TABLE_COLUMN,
+    LAST_INTERACTION_COLUMN,
+    LAST_NAME_COLUMN,
+    NEVER_LABEL,
+    NOT_ENROLLED_ACTIVE_COLUMN,
+    NOT_ENROLLED_ACTIVE_TITLE,
+    NOT_ENROLLED_KEY,
+    NO_PARTICIPATION_KEY,
+    ONE_DECIMAL_FORMAT,
+    PERCENT_FACTOR,
+    SESSIONS_COLUMN,
+    SPINNER_BUILD_ENROLLMENT,
+    STATUS_COLUMN,
+    STUDENT_LABEL_TEMPLATE,
+    STUDENT_TABLE_COLUMN,
+    SUBJECTS,
+    SUBJECT_ALL,
+    SUBJECT_COLUMN,
+    SUBJECT_KEYS,
+    TITLE_KEY,
+    USER_COLUMN,
+    USER_TABLE_COLUMN,
+    VALUE_KEY,
+    ZERO_PERCENT_TEXT,
+)
 
 def format_date(moment: pd.Timestamp) -> str:
     text: str = moment.strftime(DATE_FORMAT)
@@ -109,7 +128,7 @@ def select_users(cross: pd.DataFrame, flag_column: str, subject_key: str) -> Lis
 def build_student_label(user: str, participation_row: Any) -> str:
     last_name: str = getattr(participation_row, LAST_NAME_COLUMN)
     first_name: str = getattr(participation_row, FIRST_NAME_COLUMN)
-    label: str = f"{user} – {last_name}, {first_name}"
+    label: str = STUDENT_LABEL_TEMPLATE.format(user=user, full_name=FULL_NAME_TEMPLATE.format(last_name=last_name, first_name=first_name))
 
     return label
 
@@ -127,12 +146,12 @@ def build_not_enrolled_table(users: List[str], subject_key: str, participation_i
         last_activity_values.append(format_date(moment=last_interaction))
 
     table_data: Dict[str, list] = {
-        "user": user_values,
-        "sessions": session_values,
-        "last_activity": last_activity_values,
+        USER_TABLE_COLUMN: user_values,
+        SESSIONS_COLUMN: session_values,
+        LAST_ACTIVITY_TABLE_COLUMN: last_activity_values,
     }
     table: pd.DataFrame = pd.DataFrame(table_data)
-    sort_columns: List[str] = ["sessions", "user"]
+    sort_columns: List[str] = [SESSIONS_COLUMN, USER_TABLE_COLUMN]
     sort_order: List[bool] = [False, True]
     result: pd.DataFrame = table.sort_values(by=sort_columns, ascending=sort_order).reset_index(drop=True)
 
@@ -150,12 +169,12 @@ def build_no_participation_table(users: List[str], subject_key: str, participati
         enrollment_moment: pd.Timestamp = enrollment_dates[pair]
         students.append(student_label)
         dates.append(format_date(moment=enrollment_moment))
-        last_access.append(NEVER_TEXT)
+        last_access.append(NEVER_LABEL)
 
     table_data: Dict[str, list] = {
-        "student": students,
-        "enrollment_date": dates,
-        "last_access": last_access,
+        STUDENT_TABLE_COLUMN: students,
+        ENROLLMENT_DATE_TABLE_COLUMN: dates,
+        LAST_ACCESS_TABLE_COLUMN: last_access,
     }
     result: pd.DataFrame = pd.DataFrame(table_data)
 
@@ -176,14 +195,14 @@ def build_alerts_table(cross: pd.DataFrame, subject_key: str, participation_inde
         last_text: str = format_date(moment=getattr(participation_row, LAST_INTERACTION_COLUMN))
         students.append(build_student_label(user=user, participation_row=participation_row))
         alerts.append(ALERT_ACTIVE_WITH_DROP)
-        details.append(f"Inscripción en estado Baja con {interactions} interacciones; última actividad {last_text}")
+        details.append(ALERT_DROP_DETAIL_TEMPLATE.format(interactions=interactions, last_text=last_text))
 
     for user in no_entry_users:
         pair = (subject_key, user)
         participation_row = participation_index[pair]
         students.append(build_student_label(user=user, participation_row=participation_row))
         alerts.append(ALERT_NO_ENTRIES)
-        details.append("Inscripción sin ningún ingreso")
+        details.append(ALERT_NO_ENTRIES_DETAIL)
 
     for user in not_enrolled_users:
         pair = (subject_key, user)
@@ -192,12 +211,12 @@ def build_alerts_table(cross: pd.DataFrame, subject_key: str, participation_inde
         last_text = format_date(moment=getattr(participation_row, LAST_INTERACTION_COLUMN))
         students.append(build_student_label(user=user, participation_row=participation_row))
         alerts.append(ALERT_NOT_ENROLLED_ACTIVE)
-        details.append(f"No figura en la matrícula; {session_count} sesiones, última actividad {last_text}")
+        details.append(ALERT_NOT_ENROLLED_DETAIL_TEMPLATE.format(sessions=session_count, last_text=last_text))
 
     table_data: Dict[str, list] = {
-        "student": students,
-        "alert": alerts,
-        "detail": details,
+        STUDENT_TABLE_COLUMN: students,
+        ALERT_TABLE_COLUMN: alerts,
+        DETAIL_KEY: details,
     }
     result: pd.DataFrame = pd.DataFrame(table_data)
 
@@ -211,13 +230,13 @@ def select_summary_row(summary: pd.DataFrame, subject_key: str) -> pd.Series:
     return row
 
 def build_cards(enrolled_count: int, enrolled_active: int, not_enrolled_active: int, no_participation: int, alerts_count: int) -> List[Dict[str, str]]:
-    active_percent: str = format(enrolled_active / enrolled_count * 100, ".1f") if enrolled_count > 0 else "0.0"
+    active_percent: str = format(enrolled_active / enrolled_count * PERCENT_FACTOR, ONE_DECIMAL_FORMAT) if enrolled_count > 0 else ZERO_PERCENT_TEXT
     cards: List[Dict[str, str]] = [
-        {"title": "Matriculados", "value": str(enrolled_count), "detail": "Inscripciones oficiales"},
-        {"title": "Activos", "value": str(enrolled_active), "detail": f"{active_percent}% de los matriculados"},
-        {"title": "No inscriptos activos", "value": str(not_enrolled_active), "detail": "Usuarios sin matrícula"},
-        {"title": "Inscriptos sin participación", "value": str(no_participation), "detail": "Nunca ingresaron"},
-        {"title": "Alertas", "value": str(alerts_count), "detail": "Inscripciones a revisar"},
+        {TITLE_KEY: ENROLLED_LABEL, VALUE_KEY: str(enrolled_count), DETAIL_KEY: CARD_OFFICIAL_ENROLLMENTS_DETAIL},
+        {TITLE_KEY: ENROLLED_WITH_ACTIVITY_LABEL, VALUE_KEY: str(enrolled_active), DETAIL_KEY: ACTIVE_OF_ENROLLED_DETAIL_TEMPLATE.format(percent=active_percent)},
+        {TITLE_KEY: NOT_ENROLLED_ACTIVE_TITLE, VALUE_KEY: str(not_enrolled_active), DETAIL_KEY: CARD_NO_ENROLLMENT_DETAIL},
+        {TITLE_KEY: ENROLLED_NO_PARTICIPATION_TITLE, VALUE_KEY: str(no_participation), DETAIL_KEY: CARD_NEVER_ENTERED_DETAIL},
+        {TITLE_KEY: ALERTS_LABEL, VALUE_KEY: str(alerts_count), DETAIL_KEY: CARD_ALERTS_DETAIL},
     ]
 
     return cards
@@ -227,22 +246,24 @@ def sum_cards(cards: Dict[str, List[Dict[str, str]]]) -> List[Dict[str, str]]:
     totals: List[int] = []
 
     for position in range(len(per_subject[0])):
-        total: int = sum(int(subject_cards[position]["value"]) for subject_cards in per_subject)
+        total: int = sum(int(subject_cards[position][VALUE_KEY]) for subject_cards in per_subject)
         totals.append(total)
 
-    result: List[Dict[str, str]] = build_cards(enrolled_count=totals[0], enrolled_active=totals[1], not_enrolled_active=totals[2], no_participation=totals[3], alerts_count=totals[4])
+    enrolled_total, active_total, not_enrolled_total, no_participation_total, alerts_total = totals
+    result: List[Dict[str, str]] = build_cards(enrolled_count=enrolled_total, enrolled_active=active_total, not_enrolled_active=not_enrolled_total, no_participation=no_participation_total, alerts_count=alerts_total)
 
     return result
 
 def build_enrolled_vs_active(enrolled_count: int, enrolled_active: int) -> pd.DataFrame:
     table_data: Dict[str, list] = {
-        "status": ["Matriculados", "Activos"],
-        "count": [enrolled_count, enrolled_active],
+        STATUS_COLUMN: [ENROLLED_LABEL, ACTIVE_LABEL],
+        COUNT_COLUMN: [enrolled_count, enrolled_active],
     }
     result: pd.DataFrame = pd.DataFrame(table_data)
 
     return result
 
+@st.cache_data(ttl=CACHE_TTL_SECONDS, show_spinner=SPINNER_BUILD_ENROLLMENT)
 def build_all() -> Dict[str, Dict[str, Any]]:
     participation: pd.DataFrame = load_participation()
     cross: pd.DataFrame = load_enrollment_cross()
@@ -286,31 +307,19 @@ def build_all() -> Dict[str, Dict[str, Any]]:
     no_participation[SUBJECT_ALL] = pd.concat(list(no_participation.values()), ignore_index=True)
     alerts[SUBJECT_ALL] = pd.concat(list(alerts.values()), ignore_index=True)
     for subject_name in list(alerts.keys()):
-        not_enrolled[subject_name] = sort_by_id_asc(not_enrolled[subject_name], "user")
-        no_participation[subject_name] = sort_by_id_asc(no_participation[subject_name], "student")
-        alerts[subject_name] = sort_by_id_asc(alerts[subject_name], "student")
+        not_enrolled[subject_name] = sort_by_id_asc(not_enrolled[subject_name], USER_TABLE_COLUMN)
+        no_participation[subject_name] = sort_by_id_asc(no_participation[subject_name], STUDENT_TABLE_COLUMN)
+        alerts[subject_name] = sort_by_id_asc(alerts[subject_name], STUDENT_TABLE_COLUMN)
 
     cards[SUBJECT_ALL] = sum_cards(cards=cards)
-    enrolled_vs_active[SUBJECT_ALL] = sum_tables(list(enrolled_vs_active.values()), ["status"], ["count"])
+    enrolled_vs_active[SUBJECT_ALL] = sum_tables(list(enrolled_vs_active.values()), [STATUS_COLUMN], [COUNT_COLUMN])
 
     result: Dict[str, Dict[str, Any]] = {
-        "cards": cards,
-        "enrolled_vs_active": enrolled_vs_active,
-        "not_enrolled": not_enrolled,
-        "no_participation": no_participation,
-        "alerts": alerts,
+        CARDS_KEY: cards,
+        ENROLLED_VS_ACTIVE_KEY: enrolled_vs_active,
+        NOT_ENROLLED_KEY: not_enrolled,
+        NO_PARTICIPATION_KEY: no_participation,
+        ALERTS_KEY: alerts,
     }
 
     return result
-
-ALL_TABLES: Dict[str, Dict[str, Any]] = build_all()
-
-ENROLLMENT_KPIS: Dict[str, List[Dict[str, str]]] = ALL_TABLES["cards"]
-
-ENROLLED_VS_ACTIVE: Dict[str, pd.DataFrame] = ALL_TABLES["enrolled_vs_active"]
-
-NOT_ENROLLED_ACTIVE: Dict[str, pd.DataFrame] = ALL_TABLES["not_enrolled"]
-
-ENROLLED_NO_PARTICIPATION: Dict[str, pd.DataFrame] = ALL_TABLES["no_participation"]
-
-ALERTS: Dict[str, pd.DataFrame] = ALL_TABLES["alerts"]

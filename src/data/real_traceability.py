@@ -2,40 +2,35 @@ from functools import reduce
 from typing import Dict, List
 
 import pandas as pd
+import streamlit as st
 
-from data.real_common import (
-    SUBJECT_ALL,
-    SUBJECT_KEYS,
-    SUBJECTS,
-    load_enrolled_traceability,
-    sum_tables,
-)
+from data.real_common import load_enrolled_traceability, sum_tables
 from kpis.kpis_trazabilidad import (
     actividad_por_dia_y_franja,
     interacciones_diarias,
     interacciones_por_tipo,
     matriz_dia_franja,
 )
-
-SUBJECT_COLUMN: str = "materia"
-TYPE_COLUMN: str = "tipo"
-INTERACTIONS_COLUMN: str = "interacciones"
-DAY_COLUMN: str = "dia"
-ACTION_COLUMN: str = "action"
-COUNT_COLUMN: str = "count"
-DATE_COLUMN: str = "date"
-TIMELINE_COLUMN: str = "interactions"
-DATE_FORMAT: str = "%Y-%m-%d"
-
-DAY_LABELS: Dict[str, str] = {
-    "lunes": "Lun",
-    "martes": "Mar",
-    "miércoles": "Mié",
-    "jueves": "Jue",
-    "viernes": "Vie",
-    "sábado": "Sáb",
-    "domingo": "Dom",
-}
+from constants import (
+    ACTION_COLUMN,
+    BY_ACTION_KEY,
+    CACHE_TTL_SECONDS,
+    COUNT_COLUMN,
+    DATE_COLUMN,
+    DATE_FORMAT,
+    DAY_COLUMN,
+    HEATMAP_KEY,
+    INTERACTIONS_COLUMN,
+    SPINNER_BUILD_TRACEABILITY,
+    SUBJECTS,
+    SUBJECT_ALL,
+    SUBJECT_COLUMN,
+    SUBJECT_KEYS,
+    TIMELINE_COLUMN,
+    TIMELINE_KEY,
+    TYPE_COLUMN,
+    WEEKDAY_SHORT_LABELS,
+)
 
 def build_interactions_by_action(by_type: pd.DataFrame, subject: str) -> pd.DataFrame:
     subject_key: str = SUBJECT_KEYS[subject]
@@ -54,7 +49,7 @@ def build_interactions_by_action(by_type: pd.DataFrame, subject: str) -> pd.Data
 def build_heatmap(activity: pd.DataFrame, subject: str) -> pd.DataFrame:
     subject_key: str = SUBJECT_KEYS[subject]
     matrix: pd.DataFrame = matriz_dia_franja(actividad=activity, materia=subject_key)
-    renamed: pd.DataFrame = matrix.rename(index=DAY_LABELS)
+    renamed: pd.DataFrame = matrix.rename(index=WEEKDAY_SHORT_LABELS)
     renamed.columns.name = None
     renamed.index.name = None
 
@@ -93,6 +88,7 @@ def build_all_timeline(timelines: Dict[str, pd.DataFrame]) -> pd.DataFrame:
 
     return result
 
+@st.cache_data(ttl=CACHE_TTL_SECONDS, show_spinner=SPINNER_BUILD_TRACEABILITY)
 def build_all() -> Dict[str, Dict[str, pd.DataFrame]]:
     traceability: pd.DataFrame = load_enrolled_traceability()
     by_type: pd.DataFrame = interacciones_por_tipo(df=traceability)
@@ -112,17 +108,9 @@ def build_all() -> Dict[str, Dict[str, pd.DataFrame]]:
     timelines[SUBJECT_ALL] = build_all_timeline(timelines=timelines)
 
     result: Dict[str, Dict[str, pd.DataFrame]] = {
-        "by_action": by_action,
-        "heatmap": heatmaps,
-        "timeline": timelines,
+        BY_ACTION_KEY: by_action,
+        HEATMAP_KEY: heatmaps,
+        TIMELINE_KEY: timelines,
     }
 
     return result
-
-ALL_TABLES: Dict[str, Dict[str, pd.DataFrame]] = build_all()
-
-INTERACTIONS_BY_ACTION: Dict[str, pd.DataFrame] = ALL_TABLES["by_action"]
-
-ACTIVITY_HEATMAP: Dict[str, pd.DataFrame] = ALL_TABLES["heatmap"]
-
-TIMELINE: Dict[str, pd.DataFrame] = ALL_TABLES["timeline"]

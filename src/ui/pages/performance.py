@@ -3,23 +3,28 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 from streamlit.delta_generator import DeltaGenerator
-from data.real_common import SUBJECT_ALL, SUBJECT_OPTIONS
-from data.real_performance import COURSE_STATUS, GRADE_HISTOGRAM, INSTRUMENT_COMPARISON
+from data.real_performance import build_all
 from ui.components.charts import bar_chart, bar_chart_by_subject, donut_chart, histogram, show_figure
 from ui.components.filters import selector
 from ui.components.template import GROUP_COLORS
 from ui.components.texts import section_title
+from constants import (
+    SUBJECT_ALL,
+    SUBJECT_OPTIONS,
+)
 
 def show() -> None:
     page_title: str = "Rendimiento Académico"
     st.title(page_title)
-    
+
+    tables: Dict[str, Dict[str, pd.DataFrame]] = build_all()
+
     subject_label: str = "Asignatura"
     subject_key: str = "performance_subject"
     subject: str = selector(subject_label, SUBJECT_OPTIONS, subject_key)
-    instruments: pd.DataFrame = INSTRUMENT_COMPARISON[subject]
-    grades: pd.DataFrame = GRADE_HISTOGRAM[subject]
-    status: pd.DataFrame = COURSE_STATUS[subject]
+    instruments: pd.DataFrame = tables["instruments"][subject]
+    grades: pd.DataFrame = tables["histogram"][subject]
+    status: pd.DataFrame = tables["status"][subject]
     instruments_section: str = "Instrumentos de evaluación"
     section_title(instruments_section)
     

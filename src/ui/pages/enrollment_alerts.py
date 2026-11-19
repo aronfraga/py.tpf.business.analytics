@@ -1,13 +1,22 @@
-from typing import Dict, List
+from typing import Any, Dict, List
 import pandas as pd
 import streamlit as st
 from streamlit.delta_generator import DeltaGenerator
-from data.real_common import SUBJECT_ALL, SUBJECT_OPTIONS
-from data.real_enrollment import ALERT_ACTIVE_WITH_DROP, ALERT_NO_ENTRIES, ALERT_NOT_ENROLLED_ACTIVE, ALERTS,ALERTS_LABELS, ENROLLED_NO_PARTICIPATION, ENROLLED_NO_PARTICIPATION_LABELS, ENROLLMENT_KPIS, NOT_ENROLLED_ACTIVE, NOT_ENROLLED_ACTIVE_LABELS
+from data.real_enrollment import build_all
 from ui.components.cards import card_row
 from ui.components.filters import selector
 from ui.components.tables import table
 from ui.components.texts import section_title
+from constants import (
+    ALERTS_LABELS,
+    ALERT_ACTIVE_WITH_DROP,
+    ALERT_NOT_ENROLLED_ACTIVE,
+    ALERT_NO_ENTRIES,
+    ENROLLED_NO_PARTICIPATION_LABELS,
+    NOT_ENROLLED_ACTIVE_LABELS,
+    SUBJECT_ALL,
+    SUBJECT_OPTIONS,
+)
 
 ALERT_DETAILS: Dict[str, str] = {
     ALERT_ACTIVE_WITH_DROP: "Inscripciones",
@@ -18,14 +27,16 @@ ALERT_DETAILS: Dict[str, str] = {
 def show() -> None:
     page_title: str = "Matrícula y Alertas"
     st.title(page_title)
-    
+
+    tables: Dict[str, Dict[str, Any]] = build_all()
+
     subject_label: str = "Asignatura"
     subject_key: str = "enrollment_subject"
     subject: str = selector(subject_label, SUBJECT_OPTIONS, subject_key)
-    cards: List[Dict[str, str]] = ENROLLMENT_KPIS[subject]
-    not_enrolled: pd.DataFrame = NOT_ENROLLED_ACTIVE[subject]
-    no_participation: pd.DataFrame = ENROLLED_NO_PARTICIPATION[subject]
-    alerts: pd.DataFrame = ALERTS[subject]
+    cards: List[Dict[str, str]] = tables["cards"][subject]
+    not_enrolled: pd.DataFrame = tables["not_enrolled"][subject]
+    no_participation: pd.DataFrame = tables["no_participation"][subject]
+    alerts: pd.DataFrame = tables["alerts"][subject]
     card_row(cards)
 
     if subject == SUBJECT_ALL:
@@ -39,7 +50,7 @@ def show() -> None:
     not_enrolled_column: DeltaGenerator
     no_participation_column: DeltaGenerator
     not_enrolled_column, no_participation_column = st.columns(column_count)
-    not_enrolled_title: str = "No inscriptos activos"
+    not_enrolled_title: str = "No inscriptos con alguna actividad"
     no_participation_title: str = "Inscriptos sin participación"
     
     with not_enrolled_column:

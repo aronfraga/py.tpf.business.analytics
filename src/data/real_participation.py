@@ -1,34 +1,43 @@
 from typing import Dict, List, Tuple
 
 import pandas as pd
+import streamlit as st
 
 from data.real_common import (
-    ANCHOR_DATE,
-    DATE_RANGES,
-    SUBJECT_ALL,
-    SUBJECT_KEYS,
-    SUBJECTS,
     load_enrolled_traceability,
     load_enrollment_cross,
     load_participation,
     window_start,
 )
 from kpis.kpis_trazabilidad import interacciones_diarias
-
-SUBJECT_COLUMN: str = "materia"
-DAY_COLUMN: str = "dia"
-INTERACTIONS_COLUMN: str = "interacciones"
-ENTRY_COLUMN: str = "es_ingreso"
-ACCESSES_COLUMN: str = "accesses"
-ACTIVITIES_COLUMN: str = "activities"
-DATE_COLUMN: str = "date"
-DATE_FORMAT: str = "%Y-%m-%d"
-USER_COLUMN: str = "usuario"
-ENROLLED_COLUMN: str = "matriculado"
-LAST_NAME_COLUMN: str = "apellido"
-FIRST_NAME_COLUMN: str = "nombre"
-DAILY_FREQUENCY: str = "D"
-STUDENT_ALL: str = "Todos los estudiantes"
+from constants import (
+    ACCESSES_COLUMN,
+    ACTIVITIES_COLUMN,
+    ACTIVITY_KEY,
+    ANCHOR_DATE,
+    CACHE_TTL_SECONDS,
+    CATALOG_KEY,
+    DAILY_FREQUENCY,
+    DATE_COLUMN,
+    DATE_FORMAT,
+    DATE_RANGES,
+    DAY_COLUMN,
+    ENROLLED_COLUMN,
+    ENTRY_COLUMN,
+    FIRST_NAME_COLUMN,
+    FULL_NAME_TEMPLATE,
+    INTERACTIONS_COLUMN,
+    LAST_NAME_COLUMN,
+    SPINNER_BUILD_PARTICIPATION,
+    SPINNER_BUILD_STUDENT_ACTIVITY,
+    STUDENT_ALL,
+    STUDENT_LABEL_TEMPLATE,
+    SUBJECTS,
+    SUBJECT_ALL,
+    SUBJECT_COLUMN,
+    SUBJECT_KEYS,
+    USER_COLUMN,
+)
 
 def build_daily_accesses(traceability: pd.DataFrame) -> pd.DataFrame:
     is_entry: pd.Series = traceability[ENTRY_COLUMN]
@@ -93,20 +102,6 @@ def build_by_range(daily: pd.DataFrame, source_column: str, output_column: str) 
 
     return result
 
-DAILY_TABLE: pd.DataFrame = build_daily_table()
-
-ACTIVITY_BY_DATE: Dict[str, Dict[str, pd.DataFrame]] = build_by_range(
-    daily=DAILY_TABLE,
-    source_column=INTERACTIONS_COLUMN,
-    output_column=ACTIVITIES_COLUMN,
-)
-
-ACCESS_EVOLUTION: Dict[str, Dict[str, pd.DataFrame]] = build_by_range(
-    daily=DAILY_TABLE,
-    source_column=ACCESSES_COLUMN,
-    output_column=ACCESSES_COLUMN,
-)
-
 def build_names(participation: pd.DataFrame) -> Dict[Tuple[str, str], str]:
     names: Dict[Tuple[str, str], str] = {}
 
@@ -115,7 +110,7 @@ def build_names(participation: pd.DataFrame) -> Dict[Tuple[str, str], str]:
         user: str = getattr(row, USER_COLUMN)
         last_name: str = getattr(row, LAST_NAME_COLUMN)
         first_name: str = getattr(row, FIRST_NAME_COLUMN)
-        full_name: str = f"{last_name}, {first_name}"
+        full_name: str = FULL_NAME_TEMPLATE.format(last_name=last_name, first_name=first_name)
         pair: Tuple[str, str] = (subject_key, user)
         names[pair] = full_name
 
@@ -139,14 +134,34 @@ def build_student_catalog() -> Dict[str, Dict[str, str]]:
         for user in users:
             pair: Tuple[str, str] = (subject_key, user)
             full_name: str = names[pair]
-            label: str = f"{user} – {full_name}"
+            label: str = STUDENT_LABEL_TEMPLATE.format(user=user, full_name=full_name)
             labels_to_users[label] = user
 
         catalog[subject] = labels_to_users
 
     return catalog
 
-STUDENT_CATALOG: Dict[str, Dict[str, str]] = build_student_catalog()
+@st.cache_data(ttl=CACHE_TTL_SECONDS, show_spinner=SPINNER_BUILD_PARTICIPATION)
+def build_all() -> Dict[str, Dict[str, object]]:
+    daily: pd.DataFrame = build_daily_table()
+    activity: Dict[str, Dict[str, pd.DataFrame]] = build_by_range(
+        daily=daily,
+        source_column=INTERACTIONS_COLUMN,
+        output_column=ACTIVITIES_COLUMN,
+    )
+    accesses: Dict[str, Dict[str, pd.DataFrame]] = build_by_range(
+        daily=daily,
+        source_column=ACCESSES_COLUMN,
+        output_column=ACCESSES_COLUMN,
+    )
+    catalog: Dict[str, Dict[str, str]] = build_student_catalog()
+    result: Dict[str, Dict[str, object]] = {
+        ACTIVITY_KEY: activity,
+        ACCESSES_COLUMN: accesses,
+        CATALOG_KEY: catalog,
+    }
+
+    return result
 
 def get_subject_options() -> List[str]:
     options: List[str] = [SUBJECT_ALL]
@@ -167,16 +182,19 @@ def get_student_options(subject: str) -> List[str]:
     if subject == SUBJECT_ALL:
         return [STUDENT_ALL]
 
-    labels_to_users: Dict[str, str] = STUDENT_CATALOG[subject]
+    catalog: Dict[str, Dict[str, str]] = build_all()[CATALOG_KEY]
+    labels_to_users: Dict[str, str] = catalog[subject]
     labels: List[str] = list(labels_to_users.keys())
     options: List[str] = [STUDENT_ALL]
     options.extend(labels)
 
     return options
 
+@st.cache_data(ttl=CACHE_TTL_SECONDS, show_spinner=SPINNER_BUILD_STUDENT_ACTIVITY)
 def build_student_daily(subject: str, student: str, range_label: str) -> pd.DataFrame:
     subject_key: str = SUBJECT_KEYS[subject]
-    labels_to_users: Dict[str, str] = STUDENT_CATALOG[subject]
+    catalog: Dict[str, Dict[str, str]] = build_all()[CATALOG_KEY]
+    labels_to_users: Dict[str, str] = catalog[subject]
     user: str = labels_to_users[student]
     traceability: pd.DataFrame = load_enrolled_traceability()
     is_subject: pd.Series = traceability[SUBJECT_COLUMN] == subject_key
@@ -205,7 +223,8 @@ def get_activity(subject: str, date_range: str, student: str) -> pd.DataFrame:
     result: pd.DataFrame
 
     if student == STUDENT_ALL:
-        activity_of_range: Dict[str, pd.DataFrame] = ACTIVITY_BY_DATE[date_range]
+        activity_by_date: Dict[str, Dict[str, pd.DataFrame]] = build_all()[ACTIVITY_KEY]
+        activity_of_range: Dict[str, pd.DataFrame] = activity_by_date[date_range]
         if subject == SUBJECT_ALL:
             result = sum_subjects(activity_of_range, ACTIVITIES_COLUMN)
         else:
@@ -221,7 +240,8 @@ def get_accesses(subject: str, date_range: str, student: str) -> pd.DataFrame:
     result: pd.DataFrame
 
     if student == STUDENT_ALL:
-        accesses_of_range: Dict[str, pd.DataFrame] = ACCESS_EVOLUTION[date_range]
+        access_evolution: Dict[str, Dict[str, pd.DataFrame]] = build_all()[ACCESSES_COLUMN]
+        accesses_of_range: Dict[str, pd.DataFrame] = access_evolution[date_range]
         if subject == SUBJECT_ALL:
             result = sum_subjects(accesses_of_range, ACCESSES_COLUMN)
         else:

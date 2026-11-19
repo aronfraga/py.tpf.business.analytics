@@ -17,31 +17,89 @@ solos. Los umbrales de condición también se expresan como porcentaje del total
 
 La justificación y los controles de cada KPI están en calificaciones.ipynb.
 """
+import sys
 from pathlib import Path
 
 import pandas as pd
+_SRC_PATH = str(Path(__file__).resolve().parents[1])
+if _SRC_PATH not in sys.path:
+    sys.path.append(_SRC_PATH)
+from constants import (
+    AVERAGE_PERCENT_COLUMN,
+    CONDITIONS,
+    CONDITION_COLUMN,
+    CONDITION_FREE,
+    CONDITION_POINTS,
+    CONDITION_PROMOTED,
+    CONDITION_REGULAR,
+    CUMULATIVE_SUBJECT_KEYS,
+    DATA_PATH,
+    DEFAULT_GRADE_BIN_WIDTH,
+    DIFF_VS_GENERAL_COLUMN,
+    DISTRIBUTION_FROM_COLUMN,
+    DISTRIBUTION_TO_COLUMN,
+    ENROLLED_COLUMN,
+    ENROLLMENT_CROSS_FILE,
+    EVALUATION_PROGRESS_COLUMN,
+    EVALUATION_TYPE_COLUMN,
+    FREE_PERCENT_COLUMN,
+    GRADES_FILE,
+    GRADE_PERCENT_COLUMN,
+    GRADE_SCALE_MAX,
+    GRADE_TOLERANCE,
+    INDICATOR_COLUMN,
+    INSTRUMENT_COUNT_COLUMN,
+    INTEGRATED_FOLDER_NAME,
+    KEY_COLUMNS,
+    KPI_ACADEMIC_CONDITION,
+    KPI_AVERAGE_BY_TYPE,
+    KPI_COMPARISON,
+    KPI_GENERAL_AVERAGE,
+    KPI_GRADE_DISTRIBUTION,
+    MAXIMUM_COLUMN,
+    MEDIAN_PERCENT_COLUMN,
+    OBTAINED_COLUMN,
+    OBTAINED_SUM_COLUMN,
+    PERCENTAGE_COLUMN,
+    PERCENT_FACTOR,
+    POINTS_EVALUATED_COLUMN,
+    POINTS_OBTAINED_COLUMN,
+    POINTS_POSSIBLE_COLUMN,
+    POSSIBLE_SUM_COLUMN,
+    PROMOTED_PERCENT_COLUMN,
+    RANGE_SOURCE_COLUMN,
+    REGULAR_PERCENT_COLUMN,
+    ROUND_DECIMALS,
+    STATIC_FIGURE_DPI,
+    STATIC_GRADE_PERCENT_LABEL,
+    STATIC_HISTOGRAM_TITLE,
+    STATIC_PRIMARY_COLOR,
+    STATIC_STUDENTS_LABEL,
+    STATIC_TITLE_X_POSITION,
+    STD_PERCENT_COLUMN,
+    STUDENTS_COLUMN,
+    SUBJECT_COLUMN,
+    USER_COLUMN,
+    VALUE_COLUMN,
+)
 
 # src/kpis/kpis_calificaciones.py -> raíz del proyecto -> data/
-DATOS_POR_DEFECTO = Path(__file__).resolve().parents[2] / "data"
+DATOS_POR_DEFECTO = DATA_PATH
 
-CLAVES = ["materia", "usuario"]
+CLAVES = KEY_COLUMNS
 
 # Condiciones de cada asignatura en puntos: (total posible, mínimo para regular, mínimo para promocionar)
-CONDICIONES_PUNTOS = {
-    "algebra": (120, 60, 85),
-    "probabilidad": (100, 60, 85),
-    "algoritmos": (100, 60, 90),
-}
-CONDICIONES = ["promocionado", "regular", "libre"]
+CONDICIONES_PUNTOS = CONDITION_POINTS
+CONDICIONES = CONDITIONS
 
 # Los mismos umbrales como porcentaje del total posible
 UMBRALES_PCT = {
-    materia: {"regular": regular / total * 100, "promocionado": promociona / total * 100}
+    materia: {CONDITION_REGULAR: regular / total * PERCENT_FACTOR, CONDITION_PROMOTED: promociona / total * PERCENT_FACTOR}
     for materia, (total, regular, promociona) in CONDICIONES_PUNTOS.items()
 }
 
 # Asignaturas cuya nota final es la suma de puntos (las demás promedian sus instrumentos)
-ASIGNATURAS_ACUMULATIVAS = ["algebra"]
+ASIGNATURAS_ACUMULATIVAS = CUMULATIVE_SUBJECT_KEYS
 
 
 # ----------------------------------------------------------------------------
@@ -49,13 +107,13 @@ ASIGNATURAS_ACUMULATIVAS = ["algebra"]
 # ----------------------------------------------------------------------------
 def _solo_matriculados(calificaciones: pd.DataFrame, cruce: pd.DataFrame) -> pd.DataFrame:
     """Deja únicamente las calificaciones de estudiantes matriculados en esa asignatura."""
-    matriculados = cruce.loc[cruce["matriculado"], CLAVES]
+    matriculados = cruce.loc[cruce[ENROLLED_COLUMN], CLAVES]
     return calificaciones.merge(matriculados, on=CLAVES, how="inner")
 
 
 def _con_nota_valida(calificaciones: pd.DataFrame) -> pd.DataFrame:
     """Descarta filas sin nota o sin máximo válido (nulo o <= 0)."""
-    return calificaciones[calificaciones["nota_max"] > 0].dropna(subset=["nota_obtenida", "nota_max"])
+    return calificaciones[calificaciones[MAXIMUM_COLUMN] > 0].dropna(subset=[OBTAINED_COLUMN, MAXIMUM_COLUMN])
 
 
 # ----------------------------------------------------------------------------
@@ -68,10 +126,10 @@ def nota_por_estudiante(calificaciones: pd.DataFrame) -> pd.DataFrame:
     """
     res = (
         _con_nota_valida(calificaciones).groupby(CLAVES)
-        .agg(instrumentos=("nota_max", "size"), puntos_obtenidos=("nota_obtenida", "sum"), puntos_posibles=("nota_max", "sum"))
+        .agg(**{INSTRUMENT_COUNT_COLUMN: (MAXIMUM_COLUMN, "size"), POINTS_OBTAINED_COLUMN: (OBTAINED_COLUMN, "sum"), POINTS_POSSIBLE_COLUMN: (MAXIMUM_COLUMN, "sum")})
         .reset_index()
     )
-    res["nota_pct"] = res["puntos_obtenidos"] / res["puntos_posibles"] * 100
+    res[GRADE_PERCENT_COLUMN] = res[POINTS_OBTAINED_COLUMN] / res[POINTS_POSSIBLE_COLUMN] * PERCENT_FACTOR
     return res
 
 
@@ -85,9 +143,9 @@ def promedio_general_por_asignatura(calificaciones: pd.DataFrame, cruce: pd.Data
     if matriculados:
         calificaciones = _solo_matriculados(calificaciones, cruce)
     return (
-        nota_por_estudiante(calificaciones).groupby("materia")["nota_pct"]
-        .agg(estudiantes="size", promedio_pct="mean", mediana_pct="median")
-        .round(2)
+        nota_por_estudiante(calificaciones).groupby(SUBJECT_COLUMN)[GRADE_PERCENT_COLUMN]
+        .agg(**{STUDENTS_COLUMN: "size", AVERAGE_PERCENT_COLUMN: "mean", MEDIAN_PERCENT_COLUMN: "median"})
+        .round(ROUND_DECIMALS)
         .reset_index()
     )
 
@@ -101,15 +159,15 @@ def promedio_por_tipo_evaluacion(calificaciones: pd.DataFrame, cruce: pd.DataFra
     if matriculados:
         calificaciones = _solo_matriculados(calificaciones, cruce)
     por_estudiante = (
-        _con_nota_valida(calificaciones).groupby(["materia", "tipo_evaluacion", "usuario"])
-        .agg(obtenidos=("nota_obtenida", "sum"), posibles=("nota_max", "sum"), nota_max=("nota_max", "max"))
+        _con_nota_valida(calificaciones).groupby([SUBJECT_COLUMN, EVALUATION_TYPE_COLUMN, USER_COLUMN])
+        .agg(**{OBTAINED_SUM_COLUMN: (OBTAINED_COLUMN, "sum"), POSSIBLE_SUM_COLUMN: (MAXIMUM_COLUMN, "sum"), MAXIMUM_COLUMN: (MAXIMUM_COLUMN, "max")})
         .reset_index()
     )
-    por_estudiante["nota_pct"] = por_estudiante["obtenidos"] / por_estudiante["posibles"] * 100
+    por_estudiante[GRADE_PERCENT_COLUMN] = por_estudiante[OBTAINED_SUM_COLUMN] / por_estudiante[POSSIBLE_SUM_COLUMN] * PERCENT_FACTOR
     return (
-        por_estudiante.groupby(["materia", "tipo_evaluacion"])
-        .agg(estudiantes=("usuario", "size"), nota_max=("nota_max", "max"), promedio_pct=("nota_pct", "mean"))
-        .round(2)
+        por_estudiante.groupby([SUBJECT_COLUMN, EVALUATION_TYPE_COLUMN])
+        .agg(**{STUDENTS_COLUMN: (USER_COLUMN, "size"), MAXIMUM_COLUMN: (MAXIMUM_COLUMN, "max"), AVERAGE_PERCENT_COLUMN: (GRADE_PERCENT_COLUMN, "mean")})
+        .round(ROUND_DECIMALS)
         .reset_index()
     )
 
@@ -118,7 +176,7 @@ def promedio_por_tipo_evaluacion(calificaciones: pd.DataFrame, cruce: pd.DataFra
 # KPI 2: distribución de notas (histograma)
 # ----------------------------------------------------------------------------
 def distribucion_de_notas(calificaciones: pd.DataFrame, cruce: pd.DataFrame,
-                          ancho_bin: int = 10, matriculados: bool = True) -> pd.DataFrame:
+                          ancho_bin: int = DEFAULT_GRADE_BIN_WIDTH, matriculados: bool = True) -> pd.DataFrame:
     """KPI: distribución de notas por asignatura, en rangos de `ancho_bin` puntos sobre 100.
 
     Los rangos son [0, ancho), [ancho, 2*ancho), ..., y el último incluye el 100. Cada estudiante
@@ -132,20 +190,20 @@ def distribucion_de_notas(calificaciones: pd.DataFrame, cruce: pd.DataFrame,
         calificaciones = _solo_matriculados(calificaciones, cruce)
     por_estudiante = nota_por_estudiante(calificaciones)
 
-    bordes = list(range(0, 100 + ancho_bin, ancho_bin))
+    bordes = list(range(0, GRADE_SCALE_MAX + ancho_bin, ancho_bin))
     rangos = pd.IntervalIndex.from_breaks(bordes, closed="left")
     # Un 100 exacto va al último rango
-    por_estudiante["rango"] = pd.cut(por_estudiante["nota_pct"].clip(upper=bordes[-1] - 1e-9), bins=rangos)
+    por_estudiante[RANGE_SOURCE_COLUMN] = pd.cut(por_estudiante[GRADE_PERCENT_COLUMN].clip(upper=bordes[-1] - GRADE_TOLERANCE), bins=rangos)
 
     conteo = (
-        por_estudiante.groupby(["materia", "rango"], observed=False).size()
-        .rename("estudiantes").reset_index()
+        por_estudiante.groupby([SUBJECT_COLUMN, RANGE_SOURCE_COLUMN], observed=False).size()
+        .rename(STUDENTS_COLUMN).reset_index()
     )
-    conteo["desde"] = conteo["rango"].map(lambda r: int(r.left))
-    conteo["hasta"] = conteo["rango"].map(lambda r: int(r.right))
-    conteo["rango"] = conteo["desde"].astype(str) + "-" + conteo["hasta"].astype(str)
-    conteo["porcentaje"] = (conteo["estudiantes"] / conteo.groupby("materia")["estudiantes"].transform("sum") * 100).round(2)
-    return conteo[["materia", "rango", "desde", "hasta", "estudiantes", "porcentaje"]]
+    conteo[DISTRIBUTION_FROM_COLUMN] = conteo[RANGE_SOURCE_COLUMN].map(lambda r: int(r.left))
+    conteo[DISTRIBUTION_TO_COLUMN] = conteo[RANGE_SOURCE_COLUMN].map(lambda r: int(r.right))
+    conteo[RANGE_SOURCE_COLUMN] = conteo[DISTRIBUTION_FROM_COLUMN].astype(str) + "-" + conteo[DISTRIBUTION_TO_COLUMN].astype(str)
+    conteo[PERCENTAGE_COLUMN] = (conteo[STUDENTS_COLUMN] / conteo.groupby(SUBJECT_COLUMN)[STUDENTS_COLUMN].transform("sum") * PERCENT_FACTOR).round(ROUND_DECIMALS)
+    return conteo[[SUBJECT_COLUMN, RANGE_SOURCE_COLUMN, DISTRIBUTION_FROM_COLUMN, DISTRIBUTION_TO_COLUMN, STUDENTS_COLUMN, PERCENTAGE_COLUMN]]
 
 
 def graficar_histograma(distribucion: pd.DataFrame, ruta: Path | None = None):
@@ -156,21 +214,21 @@ def graficar_histograma(distribucion: pd.DataFrame, ruta: Path | None = None):
     """
     import matplotlib.pyplot as plt
 
-    materias = distribucion["materia"].unique()
+    materias = distribucion[SUBJECT_COLUMN].unique()
     fig, ejes = plt.subplots(1, len(materias), figsize=(5 * len(materias), 4), sharey=True, squeeze=False)
     for eje, materia in zip(ejes[0], materias):
-        t = distribucion[distribucion["materia"] == materia]
-        barras = eje.bar(t["rango"], t["estudiantes"], color="#1F5C6B", width=0.96)
+        t = distribucion[distribucion[SUBJECT_COLUMN] == materia]
+        barras = eje.bar(t[RANGE_SOURCE_COLUMN], t[STUDENTS_COLUMN], color=STATIC_PRIMARY_COLOR, width=0.96)
         eje.bar_label(barras, padding=2, fontsize=8)
         eje.set_title(materia.capitalize())
-        eje.set_xlabel("Nota (% del máximo posible)")
+        eje.set_xlabel(STATIC_GRADE_PERCENT_LABEL)
         eje.tick_params(axis="x", rotation=45)
         eje.spines[["top", "right"]].set_visible(False)
-    ejes[0][0].set_ylabel("Estudiantes")
-    fig.suptitle("Distribución de notas por asignatura", x=0.01, ha="left")
+    ejes[0][0].set_ylabel(STATIC_STUDENTS_LABEL)
+    fig.suptitle(STATIC_HISTOGRAM_TITLE, x=STATIC_TITLE_X_POSITION, ha="left")
     fig.tight_layout()
     if ruta is not None:
-        fig.savefig(ruta, dpi=150, bbox_inches="tight")
+        fig.savefig(ruta, dpi=STATIC_FIGURE_DPI, bbox_inches="tight")
     return fig
 
 
@@ -189,13 +247,13 @@ def condicion_por_estudiante(calificaciones: pd.DataFrame, cruce: pd.DataFrame,
     if matriculados:
         calificaciones = _solo_matriculados(calificaciones, cruce)
     res = nota_por_estudiante(calificaciones)
-    regular = res["materia"].map(lambda m: UMBRALES_PCT[m]["regular"])
-    promociona = res["materia"].map(lambda m: UMBRALES_PCT[m]["promocionado"])
+    regular = res[SUBJECT_COLUMN].map(lambda m: UMBRALES_PCT[m][CONDITION_REGULAR])
+    promociona = res[SUBJECT_COLUMN].map(lambda m: UMBRALES_PCT[m][CONDITION_PROMOTED])
     # Pequeña tolerancia para que 85 puntos sobre 120 (70,8333...) no quede afuera por redondeo
-    eps = 1e-9
-    res["condicion"] = "libre"
-    res.loc[res["nota_pct"] + eps >= regular, "condicion"] = "regular"
-    res.loc[res["nota_pct"] + eps >= promociona, "condicion"] = "promocionado"
+    eps = GRADE_TOLERANCE
+    res[CONDITION_COLUMN] = CONDITION_FREE
+    res.loc[res[GRADE_PERCENT_COLUMN] + eps >= regular, CONDITION_COLUMN] = CONDITION_REGULAR
+    res.loc[res[GRADE_PERCENT_COLUMN] + eps >= promociona, CONDITION_COLUMN] = CONDITION_PROMOTED
     return res
 
 
@@ -208,11 +266,11 @@ def condicion_academica(calificaciones: pd.DataFrame, cruce: pd.DataFrame,
     """
     por_estudiante = condicion_por_estudiante(calificaciones, cruce, matriculados)
     conteo = (
-        por_estudiante.groupby(["materia", "condicion"]).size().unstack(fill_value=0)
+        por_estudiante.groupby([SUBJECT_COLUMN, CONDITION_COLUMN]).size().unstack(fill_value=0)
         .reindex(columns=CONDICIONES, fill_value=0)
-        .stack().rename("estudiantes").reset_index()
+        .stack().rename(STUDENTS_COLUMN).reset_index()
     )
-    conteo["porcentaje"] = (conteo["estudiantes"] / conteo.groupby("materia")["estudiantes"].transform("sum") * 100).round(2)
+    conteo[PERCENTAGE_COLUMN] = (conteo[STUDENTS_COLUMN] / conteo.groupby(SUBJECT_COLUMN)[STUDENTS_COLUMN].transform("sum") * PERCENT_FACTOR).round(ROUND_DECIMALS)
     return conteo
 
 
@@ -233,29 +291,25 @@ def comparar_asignaturas(calificaciones: pd.DataFrame, cruce: pd.DataFrame,
     puntos ya evaluada; solo en asignaturas acumulativas, en las demás queda vacío).
     """
     por_estudiante = condicion_por_estudiante(calificaciones, cruce, matriculados)
-    general = por_estudiante["nota_pct"].mean()
+    general = por_estudiante[GRADE_PERCENT_COLUMN].mean()
 
-    res = por_estudiante.groupby("materia").agg(
-        estudiantes=("usuario", "size"),
-        promedio_pct=("nota_pct", "mean"),
-        mediana_pct=("nota_pct", "median"),
-        desvio_pct=("nota_pct", "std"),
-        puntos_evaluados=("puntos_posibles", "mean"),
+    res = por_estudiante.groupby(SUBJECT_COLUMN).agg(
+        **{STUDENTS_COLUMN: (USER_COLUMN, "size"), AVERAGE_PERCENT_COLUMN: (GRADE_PERCENT_COLUMN, "mean"), MEDIAN_PERCENT_COLUMN: (GRADE_PERCENT_COLUMN, "median"), STD_PERCENT_COLUMN: (GRADE_PERCENT_COLUMN, "std"), POINTS_EVALUATED_COLUMN: (POINTS_POSSIBLE_COLUMN, "mean")},
     )
-    res["dif_vs_general_pp"] = res["promedio_pct"] - general
+    res[DIFF_VS_GENERAL_COLUMN] = res[AVERAGE_PERCENT_COLUMN] - general
     totales = pd.Series({m: CONDICIONES_PUNTOS[m][0] for m in ASIGNATURAS_ACUMULATIVAS})
-    res["avance_evaluacion_pct"] = res["puntos_evaluados"] / totales * 100
+    res[EVALUATION_PROGRESS_COLUMN] = res[POINTS_EVALUATED_COLUMN] / totales * PERCENT_FACTOR
 
     condicion = condicion_academica(calificaciones, cruce, matriculados).pivot(
-        index="materia", columns="condicion", values="porcentaje"
+        index=SUBJECT_COLUMN, columns=CONDITION_COLUMN, values=PERCENTAGE_COLUMN
     )
-    res["pct_promocionados"] = condicion["promocionado"]
-    res["pct_regulares"] = condicion["regular"]
-    res["pct_libres"] = condicion["libre"]
+    res[PROMOTED_PERCENT_COLUMN] = condicion[CONDITION_PROMOTED]
+    res[REGULAR_PERCENT_COLUMN] = condicion[CONDITION_REGULAR]
+    res[FREE_PERCENT_COLUMN] = condicion[CONDITION_FREE]
 
-    columnas = ["estudiantes", "promedio_pct", "mediana_pct", "desvio_pct", "dif_vs_general_pp",
-                "pct_promocionados", "pct_regulares", "pct_libres", "avance_evaluacion_pct"]
-    return res[columnas].round(2).reset_index()
+    columnas = [STUDENTS_COLUMN, AVERAGE_PERCENT_COLUMN, MEDIAN_PERCENT_COLUMN, STD_PERCENT_COLUMN, DIFF_VS_GENERAL_COLUMN,
+                PROMOTED_PERCENT_COLUMN, REGULAR_PERCENT_COLUMN, FREE_PERCENT_COLUMN, EVALUATION_PROGRESS_COLUMN]
+    return res[columnas].round(ROUND_DECIMALS).reset_index()
 
 
 def comparacion_en_formato_largo(comparacion: pd.DataFrame,
@@ -265,25 +319,25 @@ def comparacion_en_formato_largo(comparacion: pd.DataFrame,
     Para el gráfico de barras agrupadas de Streamlit:
     `grouped_bar_chart({i: g for i, g in largo.groupby("indicador")}, "materia", "valor", ...)`.
     """
-    indicadores = indicadores or ["promedio_pct", "pct_promocionados", "pct_regulares", "pct_libres"]
-    return comparacion.melt(id_vars="materia", value_vars=indicadores, var_name="indicador", value_name="valor")
+    indicadores = indicadores or [AVERAGE_PERCENT_COLUMN, PROMOTED_PERCENT_COLUMN, REGULAR_PERCENT_COLUMN, FREE_PERCENT_COLUMN]
+    return comparacion.melt(id_vars=SUBJECT_COLUMN, value_vars=indicadores, var_name=INDICATOR_COLUMN, value_name=VALUE_COLUMN)
 
 
 # ----------------------------------------------------------------------------
 # Todos los KPI
 # ----------------------------------------------------------------------------
-def calcular_kpis_calificaciones(datos=None, ancho_bin: int = 10, matriculados: bool = True) -> dict[str, pd.DataFrame]:
+def calcular_kpis_calificaciones(datos=None, ancho_bin: int = DEFAULT_GRADE_BIN_WIDTH, matriculados: bool = True) -> dict[str, pd.DataFrame]:
     """Lee los datos integrados y devuelve los KPI de calificaciones como DataFrames.
 
     Claves: promedio_general, promedio_por_tipo, distribucion_notas, condicion_academica, comparacion.
     """
-    integrado = (Path(datos) if datos else DATOS_POR_DEFECTO) / "integrado"
-    calificaciones = pd.read_parquet(integrado / "calificaciones_integrado.parquet")
-    cruce = pd.read_parquet(integrado / "cruce_matriculados_integrado.parquet")
+    integrado = (Path(datos) if datos else DATOS_POR_DEFECTO) / INTEGRATED_FOLDER_NAME
+    calificaciones = pd.read_parquet(integrado / GRADES_FILE)
+    cruce = pd.read_parquet(integrado / ENROLLMENT_CROSS_FILE)
     return {
-        "promedio_general": promedio_general_por_asignatura(calificaciones, cruce, matriculados),
-        "promedio_por_tipo": promedio_por_tipo_evaluacion(calificaciones, cruce, matriculados),
-        "distribucion_notas": distribucion_de_notas(calificaciones, cruce, ancho_bin, matriculados),
-        "condicion_academica": condicion_academica(calificaciones, cruce, matriculados),
-        "comparacion": comparar_asignaturas(calificaciones, cruce, matriculados),
+        KPI_GENERAL_AVERAGE: promedio_general_por_asignatura(calificaciones, cruce, matriculados),
+        KPI_AVERAGE_BY_TYPE: promedio_por_tipo_evaluacion(calificaciones, cruce, matriculados),
+        KPI_GRADE_DISTRIBUTION: distribucion_de_notas(calificaciones, cruce, ancho_bin, matriculados),
+        KPI_ACADEMIC_CONDITION: condicion_academica(calificaciones, cruce, matriculados),
+        KPI_COMPARISON: comparar_asignaturas(calificaciones, cruce, matriculados),
     }

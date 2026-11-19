@@ -3,16 +3,23 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 from streamlit.delta_generator import DeltaGenerator
-from data.real_common import SUBJECTS
-from data.real_general import DEFAULT_INACTIVITY_DAYS, GRADE_DISTRIBUTION, PARTICIPATION_TREND, active_inactive_for_days, general_cards_for_days
+from data.real_general import active_inactive_for_days, build_all, general_cards_for_days
 from ui.components.cards import card_row
 from ui.components.charts import grouped_bar_chart, multi_line_chart, show_figure
 from ui.components.texts import section_title
+from constants import (
+    DEFAULT_INACTIVITY_DAYS,
+    SUBJECTS,
+)
 
 def show() -> None:
     page_title: str = "General"
     st.title(page_title)
-    
+
+    tables: Dict[str, Dict[str, object]] = build_all()
+    grade_distribution: Dict[str, pd.DataFrame] = tables["distribution"]
+    participation_trend: Dict[str, pd.DataFrame] = tables["trend"]
+
     days_key: str = "inactivity_days"
     slider_label: str = "Días sin actividad para considerar inactivo a un alumno"
     min_days: int = 1
@@ -48,7 +55,7 @@ def show() -> None:
     grades_title: str = "Distribución de notas"
     grades_x_title: str = "Rango de nota"
     
-    grades_figure: go.Figure = grouped_bar_chart(GRADE_DISTRIBUTION, grades_x, grades_y, grades_title, grades_x_title, students_y_title)
+    grades_figure: go.Figure = grouped_bar_chart(grade_distribution, grades_x, grades_y, grades_title, grades_x_title, students_y_title)
     
     with status_column:
         show_figure(status_figure)
@@ -64,7 +71,7 @@ def show() -> None:
     trend_x_title: str = "Semana"
     trend_y_title: str = "Sesiones promedio"
     
-    trend_figure: go.Figure = multi_line_chart(PARTICIPATION_TREND, trend_x, trend_y, trend_title, trend_x_title, trend_y_title)
+    trend_figure: go.Figure = multi_line_chart(participation_trend, trend_x, trend_y, trend_title, trend_x_title, trend_y_title)
     
     show_figure(trend_figure)
 
