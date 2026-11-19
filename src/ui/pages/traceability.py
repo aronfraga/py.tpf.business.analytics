@@ -1,14 +1,12 @@
 from typing import Dict
-import pandas as pd
-import plotly.graph_objects as go
-import streamlit as st
 from data.real_traceability import build_all
 from ui.components.charts import heatmap, horizontal_bar_chart, line_chart, show_figure
 from ui.components.filters import selector
 from ui.components.texts import section_title
-from constants import (
-    SUBJECT_OPTIONS,
-)
+from constants import SUBJECT_OPTIONS
+import pandas as pd
+import plotly.graph_objects as go
+import streamlit as st
 
 def show() -> None:
     page_title: str = "Trazabilidad"
@@ -27,7 +25,8 @@ def show() -> None:
     category_column: str = "action"
     actions_title: str = "Interacciones por tipo de acción"
     actions_x_title: str = "Interacciones"
-    actions_figure: go.Figure = horizontal_bar_chart(by_action, value_column, category_column, actions_title, actions_x_title)
+    actions_figure: go.Figure = horizontal_bar_chart(
+        by_action, value_column, category_column, actions_title, actions_x_title)
     show_figure(actions_figure)
     
     weekly_section: str = "Patrón semanal"
@@ -47,7 +46,8 @@ def show() -> None:
     timeline_title: str = "Interacciones en el tiempo"
     date_title: str = "Fecha"
     timeline_y_title: str = "Interacciones"
-    timeline_figure: go.Figure = line_chart(timeline, date_column, interactions_column, timeline_title, date_title, timeline_y_title) 
+    timeline_figure: go.Figure = line_chart(
+        timeline, date_column, interactions_column, timeline_title, date_title, timeline_y_title) 
     show_figure(timeline_figure)
 
 show()

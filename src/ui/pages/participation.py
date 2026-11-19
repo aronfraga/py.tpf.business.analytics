@@ -1,15 +1,13 @@
 from typing import List
-import pandas as pd
-import plotly.graph_objects as go
-import streamlit as st
 from streamlit.delta_generator import DeltaGenerator
 from data.real_participation import get_accesses, get_activity, get_student_options, get_subject_options
 from ui.components.charts import bar_chart, line_chart, show_figure
 from ui.components.filters import selector
 from ui.components.texts import section_title
-from constants import (
-    DATE_RANGES,
-)
+from constants import DATE_RANGES
+import pandas as pd
+import plotly.graph_objects as go
+import streamlit as st
 
 def show() -> None:
     page_title: str = "Participación"
@@ -48,11 +46,13 @@ def show() -> None:
     activity_title: str = "Actividad por fecha"
     date_title: str = "Fecha"
     activity_y_title: str = "Actividades"
-    activity_figure: go.Figure = bar_chart(activity, date_column, activity_column, activity_title, date_title, activity_y_title)
+    activity_figure: go.Figure = bar_chart(
+        activity, date_column, activity_column, activity_title, date_title, activity_y_title)
     accesses_column: str = "accesses"
     accesses_title: str = "Evolución de accesos"
     accesses_y_title: str = "Accesos"
-    accesses_figure: go.Figure = line_chart(accesses, date_column, accesses_column, accesses_title, date_title, accesses_y_title)
+    accesses_figure: go.Figure = line_chart(
+        accesses, date_column, accesses_column, accesses_title, date_title, accesses_y_title)
     activity_chart_column: DeltaGenerator
     accesses_chart_column: DeltaGenerator
     activity_chart_column, accesses_chart_column = st.columns(column_count)

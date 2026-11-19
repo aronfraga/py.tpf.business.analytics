@@ -1,18 +1,16 @@
 from typing import Any, Dict, List, Optional, Tuple
-import pandas as pd
-import plotly.graph_objects as go
-import streamlit as st
 from streamlit.delta_generator import DeltaGenerator
 from data.real_individual import build_all
-from ui.components.charts import bar_chart, bar_chart_by_subject, horizontal_bar_chart, line_chart, multi_line_chart, show_figure
+from ui.components.charts import (
+    bar_chart, bar_chart_by_subject, horizontal_bar_chart, line_chart, multi_line_chart, show_figure)
 from ui.components.filters import selector
 from ui.components.tables import table
 from ui.components.texts import section_title
 from ui.components.traffic_light import traffic_light
-from constants import (
-    GRADES_LABELS,
-    SUBJECT_ALL,
-)
+from constants import GRADES_LABELS, SUBJECT_ALL
+import pandas as pd
+import plotly.graph_objects as go
+import streamlit as st
 
 ALL_GRADES_LABELS: Dict[str, str] = {"subject": "Asignatura", "instrument": "Instrumento", "grade": "Nota"}
 
@@ -72,7 +70,8 @@ def show() -> None:
     grades_figure: go.Figure
 
     if is_all:
-        grades_figure = bar_chart_by_subject(grades, instrument_column, grade_column, "subject", grades_title, instrument_title, grade_title)
+        grades_figure = bar_chart_by_subject(
+            grades, instrument_column, grade_column, "subject", grades_title, instrument_title, grade_title)
     else:
         grades_figure = bar_chart(grades, instrument_column, grade_column, grades_title, instrument_title, grade_title)
 
@@ -86,10 +85,12 @@ def show() -> None:
 
     if is_all:
         series: Dict[str, pd.DataFrame] = data["participation_series"]
-        participation_figure = multi_line_chart(series, week_column, sessions_column, participation_title, week_title, sessions_title)
+        participation_figure = multi_line_chart(
+            series, week_column, sessions_column, participation_title, week_title, sessions_title)
     else:
         participation: pd.DataFrame = data["participation"]
-        participation_figure = line_chart(participation, week_column, sessions_column, participation_title, week_title, sessions_title)
+        participation_figure = line_chart(
+            participation, week_column, sessions_column, participation_title, week_title, sessions_title)
 
     show_figure(grades_figure)
 
@@ -111,7 +112,8 @@ def show() -> None:
     traceability_category_column: str = "action"
     traceability_title: str = "Interacciones por tipo de acción"
     traceability_x_title: str = "Interacciones"
-    traceability_figure: go.Figure = horizontal_bar_chart(traceability, traceability_value_column, traceability_category_column, traceability_title, traceability_x_title)
+    traceability_figure: go.Figure = horizontal_bar_chart(
+        traceability, traceability_value_column, traceability_category_column, traceability_title, traceability_x_title)
     show_figure(traceability_figure)
 
     table_title: str = "Detalle de notas"

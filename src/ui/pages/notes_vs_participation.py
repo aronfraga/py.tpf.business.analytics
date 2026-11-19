@@ -1,7 +1,4 @@
 from typing import Dict, List
-import pandas as pd
-import plotly.graph_objects as go
-import streamlit as st
 from streamlit.delta_generator import DeltaGenerator
 from data.real_correlation import build_all
 from ui.components.cards import kpi_card
@@ -9,10 +6,10 @@ from ui.components.charts import scatter_by_group, show_figure
 from ui.components.filters import selector
 from ui.components.tables import table
 from ui.components.texts import section_title
-from constants import (
-    RISK_LABELS,
-    SUBJECT_OPTIONS,
-)
+from constants import RISK_LABELS, SUBJECT_OPTIONS
+import pandas as pd
+import plotly.graph_objects as go
+import streamlit as st
 
 def show() -> None:
     page_title: str = "Notas vs Participación"

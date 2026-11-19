@@ -1,6 +1,5 @@
 from pathlib import Path
 from typing import Dict, List, Set, Tuple
-
 import pandas as pd
 
 PROJECT_ROOT: Path = Path(__file__).resolve().parents[1]

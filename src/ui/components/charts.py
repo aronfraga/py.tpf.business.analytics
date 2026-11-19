@@ -1,9 +1,9 @@
 from typing import Any, Dict, List, Optional
+from ui.components.template import (
+    GROUP_COLORS, GROUP_ORDER, HEATMAP_SCALE, SUBJECT_COLORS, TEMPLATE, TRANSPARENT, TREND_COLOR)
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
-
-from ui.components.template import GROUP_COLORS, GROUP_ORDER, HEATMAP_SCALE, SUBJECT_COLORS, TEMPLATE, TRANSPARENT, TREND_COLOR
 
 def apply_template(figure: go.Figure, title: str, x_title: str, y_title: str) -> go.Figure:
     figure.layout.template = TEMPLATE
@@ -158,7 +158,8 @@ def heatmap(table: pd.DataFrame, title: str, x_title: str, y_title: str) -> go.F
     colorbar_title_text: str = "Total"
     colorbar_title: Dict[str, str] = {"text": colorbar_title_text}
     colorbar: Dict[str, Any] = {"thickness": 12, "title": colorbar_title}
-    trace: go.Heatmap = go.Heatmap(z=matrix, x=columns, y=rows, colorscale=HEATMAP_SCALE, xgap=gap, ygap=gap, colorbar=colorbar)
+    trace: go.Heatmap = go.Heatmap(
+        z=matrix, x=columns, y=rows, colorscale=HEATMAP_SCALE, xgap=gap, ygap=gap, colorbar=colorbar)
     traces: List[go.Heatmap] = [trace]
     figure: go.Figure = go.Figure(data=traces)
     autorange: str = "reversed"
