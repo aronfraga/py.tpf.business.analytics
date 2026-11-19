@@ -2,7 +2,7 @@
 
 Dashboard académico que analiza la participación, las calificaciones y la matrícula de tres asignaturas: Álgebra, Algoritmos y Estructuras de Datos, y Probabilidad y Estadística.
 
-**Aplicación desplegada:** https://pytpfbusinessanalytics-z6hq7mpjphmtjaauw3ukgf.streamlit.app/
+**Aplicación desplegada:** https://tp-business-analytics.streamlit.app/
 
 ## Estructura del proyecto
 

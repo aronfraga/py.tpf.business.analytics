@@ -22,7 +22,7 @@ def build_page(definition: Dict[str, Any]) -> StreamlitPage:
     return page
 
 def main() -> None:
-    app_title: str = "Dashboard académico"
+    app_title: str = "TP Business And Analytics"
     layout: str = "wide"
     st.set_page_config(page_title=app_title, layout=layout)
     inject_styles()
