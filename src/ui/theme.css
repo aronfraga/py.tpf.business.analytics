@@ -318,7 +318,7 @@ div[data-testid="stDataFrame"] {
   color: var(--c-primary);
   font-size: 0.95rem;
   font-weight: 700;
-  margin: 0.4rem 0 0.5rem 0;
+  margin: 1.4rem 0 0.8rem 0;
 }
 
 .colored-table-wrap {
@@ -357,6 +357,10 @@ div[data-testid="stDataFrame"] {
   color: var(--c-text);
   font-size: 0.95rem;
   padding: 0.65rem 1rem;
+}
+
+.colored-table td:first-child {
+  white-space: nowrap;
 }
 
 .colored-table tbody tr:nth-child(even) td {
