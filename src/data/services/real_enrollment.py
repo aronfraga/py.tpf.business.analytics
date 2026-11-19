@@ -72,7 +72,7 @@ def build_not_enrolled_table(users: List[str], subject_key: str, participation_i
         pair: Tuple[str, str] = (subject_key, user)
         participation_row: Any = participation_index[pair]
         last_interaction: pd.Timestamp = getattr(participation_row, const.LAST_INTERACTION_COLUMN)
-        user_values.append(user)
+        user_values.append(build_student_label(user=user, participation_row=participation_row))
         session_values.append(sessions.get(pair, 0))
         last_activity_values.append(format_date(moment=last_interaction))
 
