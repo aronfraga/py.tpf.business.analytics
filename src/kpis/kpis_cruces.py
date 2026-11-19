@@ -1,21 +1,3 @@
-"""Cruces analíticos: relación de la participación y la trazabilidad con las notas.
-
-Entrada : data/integrado/{participacion,trazabilidad,calificaciones,cruce_matriculados}_integrado.parquet
-          (generados por integracion.ipynb). La carpeta data/ se busca en la raíz del proyecto.
-Salida  : DataFrames de pandas (no se escriben archivos).
-Requiere: scipy (pruebas de significancia). Está en requirements.txt.
-
-Criterios comunes:
-  - Universo: estudiantes matriculados, una fila por estudiante y asignatura.
-  - Nota (`nota_pct`): porcentaje del total de puntos rendidos (ver kpis_calificaciones.py). A quienes
-    no se presentaron a ningún instrumento se les asigna 0 y se los marca con `se_presento = False`.
-  - Participación: tiempo acumulado en la plataforma, en minutos (ver kpis_participacion.py).
-  - Trazabilidad: indicadores de uso (días activos, ingresos, semanas activas, interacciones con el
-    material y en foros). Se excluyen las interacciones de evaluaciones y calificaciones, porque son
-    consecuencia de presentarse a evaluar.
-
-La justificación y los controles de cada cruce están en cruce_participacion_notas.ipynb.
-"""
 import sys
 from pathlib import Path
 
@@ -82,7 +64,7 @@ from constants import (
     WEEK_SOURCE_COLUMN,
 )
 
-try:  # como paquete (kpis.kpis_cruces) o como módulo suelto (kpis_cruces)
+try:
     from .kpis_calificaciones import CONDICIONES, condicion_por_estudiante, nota_por_estudiante
     from .kpis_participacion import tiempo_por_estudiante
     from .kpis_trazabilidad import cargar_trazabilidad, clasificar_interacciones, marcar_ingresos
@@ -97,18 +79,8 @@ GRUPOS = GROUPS
 INDICADORES = INDICATORS
 
 
-# ----------------------------------------------------------------------------
-# Cruce 1: participación (tiempo en la plataforma) vs. notas
-# ----------------------------------------------------------------------------
 def participacion_vs_notas(participacion: pd.DataFrame, calificaciones: pd.DataFrame,
                            cruce: pd.DataFrame) -> pd.DataFrame:
-    """Participación y nota de cada estudiante matriculado, por asignatura.
-
-    A quienes no se presentaron a ningún instrumento se les asigna nota 0.
-
-    Devuelve: materia, usuario, tiempo_min (tiempo acumulado en la plataforma, en minutos),
-    nota_pct (0-100) y se_presento (False si no rindió ningún instrumento).
-    """
     tiempo = tiempo_por_estudiante(participacion, cruce)
     notas = nota_por_estudiante(calificaciones)[CLAVES + [GRADE_PERCENT_COLUMN]]
     res = tiempo.merge(notas, on=CLAVES, how="left")
@@ -118,14 +90,6 @@ def participacion_vs_notas(participacion: pd.DataFrame, calificaciones: pd.DataF
 
 
 def correlacion_participacion_nota(tabla: pd.DataFrame) -> pd.DataFrame:
-    """Correlación entre tiempo en la plataforma y nota, por asignatura.
-
-    Se calcula con todas las filas de la tabla recibida. Para ver solo a quienes se presentaron,
-    se filtra antes: `correlacion_participacion_nota(tabla[tabla["se_presento"]])`.
-
-    Devuelve: materia, estudiantes, pearson, spearman, pendiente_pp_por_hora (puntos porcentuales
-    de nota por cada hora adicional, regresión lineal simple).
-    """
     filas = []
     for materia, g in tabla.groupby(SUBJECT_COLUMN):
         pendiente = np.polyfit(g[TIME_MINUTES_COLUMN], g[GRADE_PERCENT_COLUMN], 1)[0] * MINUTES_PER_HOUR
@@ -140,13 +104,6 @@ def correlacion_participacion_nota(tabla: pd.DataFrame) -> pd.DataFrame:
 
 
 def linea_de_tendencia(tabla: pd.DataFrame) -> pd.DataFrame:
-    """Recta de tendencia (regresión lineal) de la nota según el tiempo, por asignatura.
-
-    Devuelve dos puntos por asignatura: materia, tiempo_min, nota_pct. Tiene las mismas columnas
-    que la tabla de puntos, para graficar ambas juntas. La recta se
-    limita al rango válido de la nota (0 a 100): si el ajuste supera 100 antes del tiempo máximo
-    observado, el segundo punto se corta donde la recta llega a 100.
-    """
     filas = []
     for materia, g in tabla.groupby(SUBJECT_COLUMN):
         pendiente, ordenada = np.polyfit(g[TIME_MINUTES_COLUMN], g[GRADE_PERCENT_COLUMN], 1)
@@ -161,13 +118,6 @@ def linea_de_tendencia(tabla: pd.DataFrame) -> pd.DataFrame:
 
 
 def nota_por_tramo_de_participacion(tabla: pd.DataFrame, tramos: int = PARTICIPATION_BRACKET_COUNT) -> pd.DataFrame:
-    """Nota promedio según el tramo de tiempo en la plataforma, por asignatura.
-
-    Los estudiantes se dividen en `tramos` grupos de igual tamaño según su tiempo (cuartiles por
-    defecto; el tramo 1 es el de menor participación).
-
-    Devuelve: materia, tramo, tiempo_desde_min, tiempo_hasta_min, estudiantes, nota_promedio_pct.
-    """
     piezas = []
     for materia, g in tabla.groupby(SUBJECT_COLUMN):
         tramo = pd.qcut(g[TIME_MINUTES_COLUMN], tramos, duplicates="drop")
@@ -182,17 +132,7 @@ def nota_por_tramo_de_participacion(tabla: pd.DataFrame, tramos: int = PARTICIPA
     return pd.concat(piezas, ignore_index=True).round(ROUND_DECIMALS)
 
 
-# ----------------------------------------------------------------------------
-# Cruce 2: tiempo de conexión vs. calificación final
-# ----------------------------------------------------------------------------
 def prueba_de_correlacion(tabla: pd.DataFrame, solo_presentados: bool = False) -> pd.DataFrame:
-    """Correlación entre tiempo de conexión y calificación final, con pruebas de significancia.
-
-    Con `solo_presentados=True` se excluye a quienes no rindieron ningún instrumento.
-
-    Devuelve: materia, estudiantes, pearson, pearson_ic95_inf, pearson_ic95_sup, pearson_p,
-    spearman, spearman_p y significativa (ambos p-valores < 0,05).
-    """
     datos = tabla[tabla[PRESENTED_COLUMN]] if solo_presentados else tabla
     filas = []
     for materia, g in datos.groupby(SUBJECT_COLUMN):
@@ -211,7 +151,6 @@ def prueba_de_correlacion(tabla: pd.DataFrame, solo_presentados: bool = False) -
 
 
 def tiempo_por_condicion(tabla: pd.DataFrame, calificaciones: pd.DataFrame, cruce: pd.DataFrame) -> pd.DataFrame:
-    """Agrega a la tabla por alumno su condición académica (promocionado, regular, libre o no se presentó)."""
     condicion = condicion_por_estudiante(calificaciones, cruce)[CLAVES + [CONDITION_COLUMN]]
     res = tabla.merge(condicion, on=CLAVES, how="left")
     res[CONDITION_COLUMN] = res[CONDITION_COLUMN].fillna(CONDITION_NOT_PRESENTED)
@@ -219,10 +158,6 @@ def tiempo_por_condicion(tabla: pd.DataFrame, calificaciones: pd.DataFrame, cruc
 
 
 def resumen_tiempo_por_condicion(tabla_condicion: pd.DataFrame) -> pd.DataFrame:
-    """Tiempo en la plataforma por asignatura y condición.
-
-    Devuelve: materia, condicion, estudiantes, promedio_min, mediana_min (incluye grupos vacíos).
-    """
     res = (
         tabla_condicion.groupby([SUBJECT_COLUMN, CONDITION_COLUMN])[TIME_MINUTES_COLUMN]
         .agg(**{STUDENTS_COLUMN: "size", AVERAGE_MINUTES_COLUMN: "mean", MEDIAN_MINUTES_COLUMN: "median"})
@@ -233,16 +168,8 @@ def resumen_tiempo_por_condicion(tabla_condicion: pd.DataFrame) -> pd.DataFrame:
     return res.round(1)
 
 
-# ----------------------------------------------------------------------------
-# Cruce 3: trazabilidad vs. rendimiento
-# ----------------------------------------------------------------------------
 def indicadores_de_trazabilidad(trazabilidad: pd.DataFrame, cruce: pd.DataFrame,
                                 minutos_inactividad: int = INACTIVITY_MINUTES) -> pd.DataFrame:
-    """Indicadores de uso de la plataforma de cada estudiante matriculado, por asignatura.
-
-    Devuelve: materia, usuario, dias_activos, ingresos, semanas_activas, interacciones_material,
-    interacciones_foros. Quienes no tienen eventos quedan con 0.
-    """
     eventos = marcar_ingresos(trazabilidad, minutos_inactividad)
     tipo = clasificar_interacciones(eventos)
     eventos = eventos.assign(
@@ -260,11 +187,6 @@ def indicadores_de_trazabilidad(trazabilidad: pd.DataFrame, cruce: pd.DataFrame,
 
 def trazabilidad_vs_notas(trazabilidad: pd.DataFrame, calificaciones: pd.DataFrame,
                           cruce: pd.DataFrame) -> pd.DataFrame:
-    """Indicadores de trazabilidad y nota de cada estudiante matriculado, por asignatura.
-
-    Devuelve: materia, usuario, los indicadores de `indicadores_de_trazabilidad`, nota_pct (0-100,
-    con 0 para quienes no se presentaron) y se_presento.
-    """
     notas = nota_por_estudiante(calificaciones)[CLAVES + [GRADE_PERCENT_COLUMN]]
     res = indicadores_de_trazabilidad(trazabilidad, cruce).merge(notas, on=CLAVES, how="left")
     res[PRESENTED_COLUMN] = res[GRADE_PERCENT_COLUMN].notna()
@@ -273,13 +195,6 @@ def trazabilidad_vs_notas(trazabilidad: pd.DataFrame, calificaciones: pd.DataFra
 
 
 def correlaciones_trazabilidad_nota(tabla: pd.DataFrame, solo_presentados: bool = False) -> pd.DataFrame:
-    """Correlación de Spearman entre cada indicador de trazabilidad y la nota, por asignatura.
-
-    Con `solo_presentados=True` se excluye a quienes no rindieron ningún instrumento.
-
-    Devuelve (una fila por asignatura e indicador): materia, indicador, estudiantes, spearman,
-    p_valor y significativa (p_valor < 0,05).
-    """
     datos = tabla[tabla[PRESENTED_COLUMN]] if solo_presentados else tabla
     filas = []
     for materia, g in datos.groupby(SUBJECT_COLUMN):
@@ -293,10 +208,8 @@ def correlaciones_trazabilidad_nota(tabla: pd.DataFrame, solo_presentados: bool 
 
 
 def matriz_correlaciones(correlaciones: pd.DataFrame) -> pd.DataFrame:
-    """Matriz indicador (filas) x asignatura (columnas) con la correlación, para `heatmap`."""
     return correlaciones.pivot(index=INDICATOR_COLUMN, columns=SUBJECT_COLUMN, values=SPEARMAN_COLUMN).reindex(INDICADORES)
 
 
 def indicador_mas_relacionado(correlaciones: pd.DataFrame) -> str:
-    """Indicador con mayor |correlación| promedio entre asignaturas."""
     return correlaciones.assign(**{ABSOLUTE_R_COLUMN: correlaciones[SPEARMAN_COLUMN].abs()}).groupby(INDICATOR_COLUMN)[ABSOLUTE_R_COLUMN].mean().idxmax()

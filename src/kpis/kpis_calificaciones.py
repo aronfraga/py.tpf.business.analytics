@@ -1,19 +1,3 @@
-"""KPIs de calificaciones: promedio general, distribución de notas, condición académica y comparación.
-
-Entrada : data/integrado/{calificaciones,cruce_matriculados}_integrado.parquet
-          (generados por integracion.ipynb). La carpeta data/ se busca en la raíz del proyecto.
-Salida  : DataFrames de pandas (no se escriben archivos).
-
-Las funciones de KPI son puras (reciben y devuelven DataFrames).
-
-Criterio de nota: cada estudiante tiene una nota en porcentaje (0-100) calculada como
-    suma(nota_obtenida) / suma(nota_max) * 100
-sobre los instrumentos que rindió. Así se respetan los distintos pesos de cada instrumento y las
-distintas escalas de cada asignatura, y los datos nuevos (un parcial, un recuperatorio) se suman
-solos. Los umbrales de condición también se expresan como porcentaje del total posible.
-
-La justificación y los controles de cada KPI están en calificaciones.ipynb.
-"""
 import sys
 from pathlib import Path
 
@@ -66,42 +50,27 @@ from constants import (
 
 CLAVES = KEY_COLUMNS
 
-# Condiciones de cada asignatura en puntos: (total posible, mínimo para regular, mínimo para promocionar)
 CONDICIONES_PUNTOS = CONDITION_POINTS
 CONDICIONES = CONDITIONS
 
-# Los mismos umbrales como porcentaje del total posible
 UMBRALES_PCT = {
     materia: {CONDITION_REGULAR: regular / total * PERCENT_FACTOR, CONDITION_PROMOTED: promociona / total * PERCENT_FACTOR}
     for materia, (total, regular, promociona) in CONDICIONES_PUNTOS.items()
 }
 
-# Asignaturas cuya nota final es la suma de puntos (las demás promedian sus instrumentos)
 ASIGNATURAS_ACUMULATIVAS = CUMULATIVE_SUBJECT_KEYS
 
 
-# ----------------------------------------------------------------------------
-# Auxiliares
-# ----------------------------------------------------------------------------
 def _solo_matriculados(calificaciones: pd.DataFrame, cruce: pd.DataFrame) -> pd.DataFrame:
-    """Deja únicamente las calificaciones de estudiantes matriculados en esa asignatura."""
     matriculados = cruce.loc[cruce[ENROLLED_COLUMN], CLAVES]
     return calificaciones.merge(matriculados, on=CLAVES, how="inner")
 
 
 def _con_nota_valida(calificaciones: pd.DataFrame) -> pd.DataFrame:
-    """Descarta filas sin nota o sin máximo válido (nulo o <= 0)."""
     return calificaciones[calificaciones[MAXIMUM_COLUMN] > 0].dropna(subset=[OBTAINED_COLUMN, MAXIMUM_COLUMN])
 
 
-# ----------------------------------------------------------------------------
-# KPI 1: promedio general por asignatura
-# ----------------------------------------------------------------------------
 def nota_por_estudiante(calificaciones: pd.DataFrame) -> pd.DataFrame:
-    """Nota (0-100) de cada estudiante en cada asignatura sobre el total de puntos posibles.
-
-    Devuelve: materia, usuario, instrumentos, puntos_obtenidos, puntos_posibles, nota_pct.
-    """
     res = (
         _con_nota_valida(calificaciones).groupby(CLAVES)
         .agg(**{INSTRUMENT_COUNT_COLUMN: (MAXIMUM_COLUMN, "size"), POINTS_OBTAINED_COLUMN: (OBTAINED_COLUMN, "sum"), POINTS_POSSIBLE_COLUMN: (MAXIMUM_COLUMN, "sum")})
@@ -113,11 +82,6 @@ def nota_por_estudiante(calificaciones: pd.DataFrame) -> pd.DataFrame:
 
 def promedio_general_por_asignatura(calificaciones: pd.DataFrame, cruce: pd.DataFrame,
                                     matriculados: bool = True) -> pd.DataFrame:
-    """KPI: promedio general por asignatura, en porcentaje del máximo posible (0-100).
-
-    Devuelve una fila por asignatura: materia, estudiantes, promedio_pct (promedio de la nota
-    de cada estudiante, así cada estudiante pesa igual) y mediana_pct.
-    """
     if matriculados:
         calificaciones = _solo_matriculados(calificaciones, cruce)
     return (
@@ -130,10 +94,6 @@ def promedio_general_por_asignatura(calificaciones: pd.DataFrame, cruce: pd.Data
 
 def promedio_por_tipo_evaluacion(calificaciones: pd.DataFrame, cruce: pd.DataFrame,
                                  matriculados: bool = True) -> pd.DataFrame:
-    """Promedio (0-100) por asignatura y tipo de evaluación, con el máximo original del instrumento.
-
-    Devuelve: materia, tipo_evaluacion, estudiantes, nota_max, promedio_pct.
-    """
     if matriculados:
         calificaciones = _solo_matriculados(calificaciones, cruce)
     por_estudiante = (
@@ -150,27 +110,14 @@ def promedio_por_tipo_evaluacion(calificaciones: pd.DataFrame, cruce: pd.DataFra
     )
 
 
-# ----------------------------------------------------------------------------
-# KPI 2: distribución de notas (histograma)
-# ----------------------------------------------------------------------------
 def distribucion_de_notas(calificaciones: pd.DataFrame, cruce: pd.DataFrame,
                           ancho_bin: int = DEFAULT_GRADE_BIN_WIDTH, matriculados: bool = True) -> pd.DataFrame:
-    """KPI: distribución de notas por asignatura, en rangos de `ancho_bin` puntos sobre 100.
-
-    Los rangos son [0, ancho), [ancho, 2*ancho), ..., y el último incluye el 100. Cada estudiante
-    cuenta una vez por asignatura. Incluye los rangos vacíos. Es el insumo del histograma de
-    Streamlit (`histogram(tabla[tabla["materia"] == m], "rango", "estudiantes", ...)`).
-
-    Devuelve (una fila por asignatura y rango): materia, rango (texto, p. ej. "80-90"), desde,
-    hasta, estudiantes, porcentaje (de los estudiantes de la asignatura).
-    """
     if matriculados:
         calificaciones = _solo_matriculados(calificaciones, cruce)
     por_estudiante = nota_por_estudiante(calificaciones)
 
     bordes = list(range(0, GRADE_SCALE_MAX + ancho_bin, ancho_bin))
     rangos = pd.IntervalIndex.from_breaks(bordes, closed="left")
-    # Un 100 exacto va al último rango
     por_estudiante[RANGE_SOURCE_COLUMN] = pd.cut(por_estudiante[GRADE_PERCENT_COLUMN].clip(upper=bordes[-1] - GRADE_TOLERANCE), bins=rangos)
 
     conteo = (
@@ -184,24 +131,13 @@ def distribucion_de_notas(calificaciones: pd.DataFrame, cruce: pd.DataFrame,
     return conteo[[SUBJECT_COLUMN, RANGE_SOURCE_COLUMN, DISTRIBUTION_FROM_COLUMN, DISTRIBUTION_TO_COLUMN, STUDENTS_COLUMN, PERCENTAGE_COLUMN]]
 
 
-# ----------------------------------------------------------------------------
-# KPI 3: promocionados, regulares y libres
-# ----------------------------------------------------------------------------
 def condicion_por_estudiante(calificaciones: pd.DataFrame, cruce: pd.DataFrame,
                              matriculados: bool = True) -> pd.DataFrame:
-    """Condición (promocionado / regular / libre) de cada estudiante según su nota_pct.
-
-    La nota es un porcentaje de lo rendido hasta ahora, así que quien tiene 30 de 30 puntos
-    queda promocionado y no libre. Es una clasificación del desempeño actual, no una proyección.
-
-    Devuelve: materia, usuario, instrumentos, puntos_obtenidos, puntos_posibles, nota_pct, condicion.
-    """
     if matriculados:
         calificaciones = _solo_matriculados(calificaciones, cruce)
     res = nota_por_estudiante(calificaciones)
     regular = res[SUBJECT_COLUMN].map(lambda m: UMBRALES_PCT[m][CONDITION_REGULAR])
     promociona = res[SUBJECT_COLUMN].map(lambda m: UMBRALES_PCT[m][CONDITION_PROMOTED])
-    # Pequeña tolerancia para que 85 puntos sobre 120 (70,8333...) no quede afuera por redondeo
     eps = GRADE_TOLERANCE
     res[CONDITION_COLUMN] = CONDITION_FREE
     res.loc[res[GRADE_PERCENT_COLUMN] + eps >= regular, CONDITION_COLUMN] = CONDITION_REGULAR
@@ -211,11 +147,6 @@ def condicion_por_estudiante(calificaciones: pd.DataFrame, cruce: pd.DataFrame,
 
 def condicion_academica(calificaciones: pd.DataFrame, cruce: pd.DataFrame,
                         matriculados: bool = True) -> pd.DataFrame:
-    """KPI: estudiantes promocionados, regulares y libres por asignatura.
-
-    Devuelve una fila por asignatura y condición (incluye las condiciones sin estudiantes):
-    materia, condicion, estudiantes, porcentaje. Sirve directo para el gráfico de dona de Streamlit.
-    """
     por_estudiante = condicion_por_estudiante(calificaciones, cruce, matriculados)
     conteo = (
         por_estudiante.groupby([SUBJECT_COLUMN, CONDITION_COLUMN]).size().unstack(fill_value=0)
@@ -226,22 +157,8 @@ def condicion_academica(calificaciones: pd.DataFrame, cruce: pd.DataFrame,
     return conteo
 
 
-# ----------------------------------------------------------------------------
-# KPI 4: comparación entre asignaturas
-# ----------------------------------------------------------------------------
 def comparar_asignaturas(calificaciones: pd.DataFrame, cruce: pd.DataFrame,
                          matriculados: bool = True) -> pd.DataFrame:
-    """KPI: tabla comparativa de resultados por asignatura (todo en % del total posible).
-
-    Reúne los KPI anteriores y agrega dispersión, diferencia contra el promedio general y
-    avance de la evaluación. Al comparar hay que recordar que los umbrales para promocionar
-    difieren entre asignaturas.
-
-    Devuelve una fila por asignatura: materia, estudiantes, promedio_pct, mediana_pct, desvio_pct,
-    dif_vs_general_pp (puntos porcentuales contra el promedio de todos los estudiantes),
-    pct_promocionados, pct_regulares, pct_libres y avance_evaluacion_pct (parte del total de
-    puntos ya evaluada; solo en asignaturas acumulativas, en las demás queda vacío).
-    """
     por_estudiante = condicion_por_estudiante(calificaciones, cruce, matriculados)
     general = por_estudiante[GRADE_PERCENT_COLUMN].mean()
 

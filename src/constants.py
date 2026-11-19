@@ -1,30 +1,8 @@
-"""Constantes de todo el proyecto (app Streamlit, capa de datos y KPIs).
-
-Regla: la capa de datos (src/data) y los KPIs (src/kpis) no definen textos, nombres de columnas,
-rutas, colores, umbrales ni parámetros de forma suelta; todo se declara acá, con nombre
-específico y tipo, y se importa. Las pantallas (src/ui) y app.py conservan sus propios textos.
-
-Secciones:
-   1. Rutas y archivos
-   2. Caché y mensajes de carga
-   3. Asignaturas
-   4. Fechas y rangos
-   5. Columnas de los datos integrados y de los KPIs
-   6. Valores de condición académica y de trazabilidad
-   7. Claves de los resultados de los KPIs
-   8. Parámetros de los KPIs
-   9. Columnas y claves de las tablas que entrega la capa de datos
-  10. Textos que arma la capa de datos (tarjetas, alertas, rangos, etiquetas)
-  11. Textos y colores de los gráficos estáticos (matplotlib) de los KPIs
-"""
 from pathlib import Path
 from typing import Dict, List, Set, Tuple
 
 import pandas as pd
 
-# =============================================================================
-# 1. RUTAS Y ARCHIVOS
-# =============================================================================
 PROJECT_ROOT: Path = Path(__file__).resolve().parents[1]
 DATA_FOLDER_NAME: str = "data"
 INTEGRATED_FOLDER_NAME: str = "integrado"
@@ -37,10 +15,6 @@ ENROLLMENT_CROSS_FILE: str = "cruce_matriculados_integrado.parquet"
 ENROLLMENT_LIST_FILE: str = "matriculados_integrado.parquet"
 TRACEABILITY_FILE: str = "trazabilidad_integrado.parquet"
 
-
-# =============================================================================
-# 2. CACHÉ Y MENSAJES DE CARGA
-# =============================================================================
 CACHE_TTL_SECONDS: int = 300
 
 SPINNER_LOAD_PARTICIPATION: str = "Cargando participación..."
@@ -59,9 +33,6 @@ SPINNER_BUILD_ENROLLMENT: str = "Calculando matrícula y alertas..."
 SPINNER_BUILD_CORRELATION: str = "Calculando correlaciones..."
 SPINNER_BUILD_INDIVIDUAL: str = "Calculando datos individuales..."
 
-# =============================================================================
-# 3. ASIGNATURAS
-# =============================================================================
 ALGEBRA: str = "Álgebra"
 ALGORITHMS: str = "Algoritmos y Estructuras de Datos"
 PROBABILITY: str = "Probabilidad y Estadística"
@@ -81,12 +52,8 @@ SUBJECT_KEYS: Dict[str, str] = {
     SUBJECT_ALL: ALL_KEY,
 }
 
-# Asignaturas cuya nota final es la suma de puntos (las demás promedian sus instrumentos)
 CUMULATIVE_SUBJECT_KEYS: List[str] = [ALGEBRA_KEY]
 
-# =============================================================================
-# 4. FECHAS Y RANGOS
-# =============================================================================
 ANCHOR_DATE: pd.Timestamp = pd.Timestamp("2025-10-24")
 DATA_START_DATE: pd.Timestamp = pd.Timestamp("2025-08-05")
 DATE_FORMAT: str = "%Y-%m-%d"
@@ -130,10 +97,6 @@ WEEKDAY_SHORT_LABELS: Dict[str, str] = {
     WEEKDAY_SUNDAY: "Dom",
 }
 
-# =============================================================================
-# 5. COLUMNAS DE LOS DATOS INTEGRADOS Y DE LOS KPIs
-# =============================================================================
-# --- Identidad del estudiante
 SUBJECT_COLUMN: str = "materia"
 USER_COLUMN: str = "usuario"
 ENROLLED_COLUMN: str = "matriculado"
@@ -141,7 +104,6 @@ LAST_NAME_COLUMN: str = "apellido"
 FIRST_NAME_COLUMN: str = "nombre"
 KEY_COLUMNS: List[str] = [SUBJECT_COLUMN, USER_COLUMN]
 
-# --- Fechas y períodos
 EVENT_DATE_COLUMN: str = "fecha"
 DAY_COLUMN: str = "dia"
 WEEKDAY_COLUMN: str = "dia_semana"
@@ -155,7 +117,6 @@ START_COLUMN: str = "inicio"
 ENROLLMENT_DATE_COLUMN: str = "fecha_inscripcion"
 LAST_INTERACTION_COLUMN: str = "ultima_interaccion"
 
-# --- Trazabilidad
 SECTION_COLUMN: str = "seccion"
 ACTION_SOURCE_COLUMN: str = "accion"
 TYPE_COLUMN: str = "tipo"
@@ -177,7 +138,6 @@ IS_FORUM_COLUMN: str = "es_foro"
 IS_MATERIAL_COLUMN: str = "es_material"
 NO_ACTION_LABEL: str = "(sin acción)"
 
-# --- Participación
 PARTICIPATES_COLUMN: str = "participa"
 IS_ENROLLED_COLUMN: str = "es_matriculado"
 ACTIVE_COLUMN: str = "activo"
@@ -203,7 +163,6 @@ AVERAGE_MINUTES_ENROLLED_COLUMN: str = "promedio_min_matriculados"
 AVERAGE_MINUTES_ACTIVE_COLUMN: str = "promedio_min_activos"
 MEDIAN_MINUTES_ENROLLED_COLUMN: str = "mediana_min_matriculados"
 
-# --- Calificaciones
 INSTRUMENT_SOURCE_COLUMN: str = "instrumento"
 FILE_ID_COLUMN: str = "id_archivo"
 OBTAINED_COLUMN: str = "nota_obtenida"
@@ -232,7 +191,6 @@ PERCENTAGE_COLUMN: str = "porcentaje"
 CONDITION_COLUMN: str = "condicion"
 INDICATOR_COLUMN: str = "indicador"
 
-# --- Matrícula y alertas
 ENROLLED_ACTIVE_COLUMN: str = "matriculados_activos"
 NOT_ENROLLED_ACTIVE_COLUMN: str = "no_matriculados_activos"
 FLAG_NOT_ENROLLED_ACTIVE: str = "activo_no_inscripto"
@@ -241,7 +199,6 @@ FLAG_ENROLLED_WITHOUT_ACTIVITY: str = "inscripto_sin_actividad"
 ENROLLMENT_STATE_COLUMN: str = "estado_insc"
 SITUATION_COLUMN: str = "situacion"
 
-# --- Cruces analíticos
 PRESENTED_COLUMN: str = "se_presento"
 ACTIVE_DAYS_COLUMN: str = "dias_activos"
 ACTIVE_WEEKS_COLUMN: str = "semanas_activas"
@@ -263,9 +220,6 @@ TIME_TO_MINUTES_COLUMN: str = "tiempo_hasta_min"
 AVERAGE_GRADE_PERCENT_COLUMN: str = "nota_promedio_pct"
 GROUP_SOURCE_COLUMN: str = "grupo"
 
-# =============================================================================
-# 6. VALORES DE CONDICIÓN ACADÉMICA Y DE TRAZABILIDAD
-# =============================================================================
 CONDITION_PROMOTED: str = "promocionado"
 CONDITION_REGULAR: str = "regular"
 CONDITION_FREE: str = "libre"
@@ -286,7 +240,6 @@ TYPE_GRADES: str = "Calificaciones"
 TYPE_OTHERS: str = "Otros"
 INTERACTION_TYPES: List[str] = [TYPE_NAVIGATION, TYPE_STUDY_MATERIAL, TYPE_EVALUATIONS, TYPE_FORUMS, TYPE_GRADES, TYPE_OTHERS]
 
-# Las acciones de acceso son navegación (clics) sin importar la sección
 NAVIGATION_ACTIONS: Set[str] = {"Acceder", "Acceder actividad"}
 
 SECTION_PROGRAM_TEXTS: str = "Programa > Textos"
@@ -311,14 +264,6 @@ TYPE_BY_SECTION: Dict[str, str] = {
     SECTION_CONTACTS: TYPE_FORUMS,
 }
 
-# =============================================================================
-# 7. CLAVES DE LOS RESULTADOS DE LOS KPIs
-# =============================================================================
-
-# =============================================================================
-# 8. PARÁMETROS DE LOS KPIs
-# =============================================================================
-# Puntos de cada asignatura: (total posible, mínimo para regularizar, mínimo para promocionar)
 ALGEBRA_TOTAL_POINTS: int = 120
 ALGEBRA_REGULAR_POINTS: int = 60
 ALGEBRA_PROMOTION_POINTS: int = 85
@@ -356,12 +301,10 @@ HISTOGRAM_BIN_WIDTH: int = 10
 SIGNIFICANCE_LEVEL: float = 0.05
 CONFIDENCE_LEVEL: float = 0.95
 
-# Límites para describir la intensidad de una correlación
 NO_ASSOCIATION_LIMIT: float = 0.1
 WEAK_LIMIT: float = 0.3
 MODERATE_LIMIT: float = 0.5
 
-# Decimales por tipo de nota
 SCATTER_GRADE_DECIMALS: int = 2
 INDIVIDUAL_GRADE_DECIMALS: int = 1
 RISK_GRADE_DECIMALS: int = 1
@@ -371,10 +314,6 @@ CORRELATION_TEST_DECIMALS: int = 4
 SPEARMAN_DECIMALS: int = 3
 P_VALUE_DECIMALS: int = 6
 
-# =============================================================================
-# 9. COLUMNAS Y CLAVES DE LAS TABLAS QUE ENTREGA LA CAPA DE DATOS
-# =============================================================================
-# --- Columnas de las tablas (nombres en inglés que leen los gráficos y las tablas)
 COUNT_COLUMN: str = "count"
 STATUS_COLUMN: str = "status"
 RANGE_COLUMN: str = "range"
@@ -403,7 +342,6 @@ DETAIL_KEY: str = "detail"
 TITLE_KEY: str = "title"
 VALUE_KEY: str = "value"
 
-# --- Claves de los diccionarios que devuelven los build_all() de cada pantalla
 CARDS_KEY: str = "cards"
 DISTRIBUTION_KEY: str = "distribution"
 TREND_KEY: str = "trend"
@@ -431,10 +369,6 @@ TRAFFIC_LIGHTS_KEY: str = "traffic_lights"
 PARTICIPATION_SERIES_KEY: str = "participation_series"
 NO_GRADES_KEY: str = "no_grades"
 
-# =============================================================================
-# 10. TEXTOS QUE ARMA LA CAPA DE DATOS (TARJETAS, ALERTAS, RANGOS, ETIQUETAS)
-# =============================================================================
-# --- Formatos
 ONE_DECIMAL_FORMAT: str = ".1f"
 INTEGER_FORMAT: str = ".0f"
 TIME_SLOT_LABEL_TEMPLATE: str = "{start:02d}-{end:02d} h"
@@ -442,7 +376,6 @@ VALUE_FORMAT: str = ".2f"
 ZERO_PERCENT_TEXT: str = "0.0"
 STUDENT_ALL: str = "Todos los estudiantes"
 
-# --- Plantillas de texto (se completan con str.format)
 RANGE_LABEL_TEMPLATE: str = "{start}-{end}"
 WEEK_PREFIX: str = "Sem"
 WEEK_LABEL_TEMPLATE: str = "{prefix} {number}"
@@ -456,7 +389,6 @@ INACTIVE_REASON_TEMPLATE: str = "Sin actividad hace más de {days} días"
 ALERT_DROP_DETAIL_TEMPLATE: str = "Inscripción en estado Baja con {interactions} interacciones; última actividad {last_text}"
 ALERT_NOT_ENROLLED_DETAIL_TEMPLATE: str = "No figura en la matrícula; {sessions} sesiones, última actividad {last_text}"
 
-# --- Etiquetas de estado
 ENROLLED_LABEL: str = "Matriculados"
 ACTIVE_LABEL: str = "Activos"
 ENROLLED_WITH_ACTIVITY_LABEL: str = "Con alguna actividad"
@@ -474,14 +406,12 @@ CONDITION_LABELS: Dict[str, str] = {
 }
 STATUS_ORDER: List[str] = [CONDITION_FREE, CONDITION_REGULAR, CONDITION_PROMOTED]
 
-# --- Tarjetas de la pantalla General
 CARD_ENROLLED_DETAIL: str = "Estudiantes inscriptos"
 CARD_AVERAGE_GRADE_TITLE: str = "Promedio de notas"
 CARD_GRADE_SCALE_DETAIL: str = "Escala de 0 a 10"
 CARD_AVERAGE_SESSIONS_TITLE: str = "Promedio de sesiones"
 CARD_PER_ACTIVE_STUDENT_DETAIL: str = "Por estudiante activo"
 
-# --- Tarjetas de la pantalla Matrícula y alertas
 CARD_OFFICIAL_ENROLLMENTS_DETAIL: str = "Inscripciones oficiales"
 NOT_ENROLLED_ACTIVE_TITLE: str = "No inscriptos con alguna actividad"
 CARD_NO_ENROLLMENT_DETAIL: str = "Usuarios sin matrícula"
@@ -490,13 +420,11 @@ CARD_NEVER_ENTERED_DETAIL: str = "Nunca ingresaron"
 ALERTS_LABEL: str = "Alertas"
 CARD_ALERTS_DETAIL: str = "Inscripciones a revisar"
 
-# --- Alertas
 ALERT_ACTIVE_WITH_DROP: str = "Matriculados dados de baja"
 ALERT_NO_ENTRIES: str = "Sin ingresos"
 ALERT_NOT_ENROLLED_ACTIVE: str = "No inscripto con alguna actividad"
 ALERT_NO_ENTRIES_DETAIL: str = "Inscripción sin ningún ingreso"
 
-# --- Motivos de riesgo y descripción de la correlación
 NEVER_ENTERED_REASON: str = "Nunca ingresó"
 REASON_SEPARATOR: str = "; "
 STRENGTH_VERY_WEAK: str = "muy débil"
@@ -507,7 +435,6 @@ DIRECTION_POSITIVE: str = "positiva"
 DIRECTION_NEGATIVE: str = "negativa"
 CORRELATION_CARD_TITLE: str = "Correlación tiempo–nota (Pearson)"
 
-# --- Etiquetas de las tablas de la UI (columna -> título visible)
 NOT_ENROLLED_ACTIVE_LABELS: Dict[str, str] = {
     USER_TABLE_COLUMN: "Usuario",
     SESSIONS_COLUMN: "Sesiones",
@@ -533,7 +460,6 @@ RISK_LABELS: Dict[str, str] = {
 }
 GRADES_LABELS: Dict[str, str] = {INSTRUMENT_COLUMN: "Instrumento", GRADE_COLUMN: "Nota"}
 
-# --- Semáforo del estudiante
 TRAFFIC_GREEN: str = "green"
 TRAFFIC_YELLOW: str = "yellow"
 TRAFFIC_RED: str = "red"
@@ -543,7 +469,3 @@ CONDITION_TRAFFIC_COLORS: Dict[str, str] = {
     CONDITION_REGULAR: TRAFFIC_YELLOW,
     CONDITION_FREE: TRAFFIC_RED,
 }
-
-# =============================================================================
-# 11. TEXTOS Y COLORES DE LOS GRÁFICOS ESTÁTICOS (MATPLOTLIB) DE LOS KPIs
-# =============================================================================
