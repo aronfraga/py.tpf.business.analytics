@@ -1,6 +1,6 @@
 from typing import Dict, List
 from streamlit.delta_generator import DeltaGenerator
-from data.real_general import active_inactive_for_days, build_all, general_cards_for_days
+from data.services.real_general import active_inactive_for_days, build_all, general_cards_for_days
 from ui.components.cards import card_row
 from ui.components.charts import grouped_bar_chart, multi_line_chart, show_figure
 from ui.components.texts import section_title

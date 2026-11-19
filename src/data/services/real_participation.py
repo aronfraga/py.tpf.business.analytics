@@ -1,6 +1,6 @@
 from typing import Dict, List, Tuple
-from data.real_common import load_enrolled_traceability, load_enrollment_cross, load_participation, window_start
-from kpis.kpis_trazabilidad import interacciones_diarias
+from data.services.real_common import load_enrolled_traceability, load_enrollment_cross, load_participation, window_start
+from data.kpis.kpis_trazabilidad import interacciones_diarias
 import pandas as pd
 import streamlit as st
 import constants as const

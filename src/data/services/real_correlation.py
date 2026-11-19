@@ -1,8 +1,8 @@
 from typing import Any, Dict, List, Optional, Tuple
-from data.real_common import (load_enrolled_traceability, load_enrollment_cross, load_grades, load_participation, sort_by_id_asc)
-from kpis.kpis_calificaciones import condicion_por_estudiante
-from kpis.kpis_cruces import correlacion_participacion_nota, linea_de_tendencia, participacion_vs_notas
-from kpis.kpis_participacion import sesiones_por_estudiante
+from data.services.real_common import (load_enrolled_traceability, load_enrollment_cross, load_grades, load_participation, sort_by_id_asc)
+from data.kpis.kpis_calificaciones import condicion_por_estudiante
+from data.kpis.kpis_cruces import correlacion_participacion_nota, linea_de_tendencia, participacion_vs_notas
+from data.kpis.kpis_participacion import sesiones_por_estudiante
 import pandas as pd
 import streamlit as st
 import constants as const

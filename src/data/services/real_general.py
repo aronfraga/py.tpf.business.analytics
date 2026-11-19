@@ -1,8 +1,8 @@
 from typing import Dict, List
-from data.real_common import load_enrolled_traceability, load_enrollment_cross, load_grades, load_participation
-from kpis.kpis_calificaciones import distribucion_de_notas, promedio_general_por_asignatura
-from kpis.kpis_participacion import estudiantes_activos_vs_inactivos, sesiones_promedio_por_estudiante
-from kpis.kpis_trazabilidad import frecuencia_ingreso
+from data.services.real_common import load_enrolled_traceability, load_enrollment_cross, load_grades, load_participation
+from data.kpis.kpis_calificaciones import distribucion_de_notas, promedio_general_por_asignatura
+from data.kpis.kpis_participacion import estudiantes_activos_vs_inactivos, sesiones_promedio_por_estudiante
+from data.kpis.kpis_trazabilidad import frecuencia_ingreso
 import pandas as pd
 import streamlit as st
 import constants as const

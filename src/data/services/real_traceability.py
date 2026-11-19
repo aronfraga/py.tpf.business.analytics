@@ -1,7 +1,7 @@
 from functools import reduce
 from typing import Dict, List
-from data.real_common import load_enrolled_traceability, sum_tables
-from kpis.kpis_trazabilidad import (actividad_por_dia_y_franja, interacciones_diarias, interacciones_por_tipo, matriz_dia_franja)
+from data.services.real_common import load_enrolled_traceability, sum_tables
+from data.kpis.kpis_trazabilidad import (actividad_por_dia_y_franja, interacciones_diarias, interacciones_por_tipo, matriz_dia_franja)
 import pandas as pd
 import streamlit as st
 import constants as const

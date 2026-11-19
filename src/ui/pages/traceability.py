@@ -1,5 +1,5 @@
 from typing import Dict
-from data.real_traceability import build_all
+from data.services.real_traceability import build_all
 from ui.components.charts import heatmap, horizontal_bar_chart, line_chart, show_figure
 from ui.components.filters import selector
 from ui.components.texts import section_title

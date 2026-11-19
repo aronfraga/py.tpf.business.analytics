@@ -1,5 +1,5 @@
 from typing import List
-from kpis.kpis_trazabilidad import cargar_trazabilidad, marcar_ingresos
+from data.kpis.kpis_trazabilidad import cargar_trazabilidad, marcar_ingresos
 import pandas as pd
 import streamlit as st
 import constants as const

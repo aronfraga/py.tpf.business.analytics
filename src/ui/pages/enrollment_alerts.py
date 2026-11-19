@@ -1,6 +1,6 @@
 from typing import Any, Dict, List
 from streamlit.delta_generator import DeltaGenerator
-from data.real_enrollment import build_all
+from data.services.real_enrollment import build_all
 from ui.components.cards import card_row
 from ui.components.filters import selector
 from ui.components.tables import table

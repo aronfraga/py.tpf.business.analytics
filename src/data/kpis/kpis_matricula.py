@@ -1,7 +1,7 @@
 from pathlib import Path
 import sys
 import pandas as pd
-_SRC_PATH = str(Path(__file__).resolve().parents[1])
+_SRC_PATH = str(Path(__file__).resolve().parents[2])
 if _SRC_PATH not in sys.path:
     sys.path.append(_SRC_PATH)
 import constants as const

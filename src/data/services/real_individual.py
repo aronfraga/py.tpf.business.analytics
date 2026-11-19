@@ -1,7 +1,7 @@
 from typing import Any, Dict, List, Optional, Tuple
-from data.real_common import (load_enrolled_traceability, load_enrollment_cross, load_grades, load_participation, sum_tables)
-from kpis.kpis_calificaciones import condicion_por_estudiante, nota_por_estudiante
-from kpis.kpis_trazabilidad import TIPOS, clasificar_interacciones, frecuencia_ingreso
+from data.services.real_common import (load_enrolled_traceability, load_enrollment_cross, load_grades, load_participation, sum_tables)
+from data.kpis.kpis_calificaciones import condicion_por_estudiante, nota_por_estudiante
+from data.kpis.kpis_trazabilidad import TIPOS, clasificar_interacciones, frecuencia_ingreso
 import pandas as pd
 import streamlit as st
 import constants as const

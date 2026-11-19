@@ -1,6 +1,6 @@
 from typing import List
 from streamlit.delta_generator import DeltaGenerator
-from data.real_participation import get_accesses, get_activity, get_student_options, get_subject_options
+from data.services.real_participation import get_accesses, get_activity, get_student_options, get_subject_options
 from ui.components.charts import bar_chart, line_chart, show_figure
 from ui.components.filters import selector
 from ui.components.texts import section_title

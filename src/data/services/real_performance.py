@@ -1,6 +1,6 @@
 from typing import Dict, List
-from data.real_common import load_enrollment_cross, load_grades, select_subject
-from kpis.kpis_calificaciones import condicion_academica, distribucion_de_notas
+from data.services.real_common import load_enrollment_cross, load_grades, select_subject
+from data.kpis.kpis_calificaciones import condicion_academica, distribucion_de_notas
 import pandas as pd
 import streamlit as st
 import constants as const

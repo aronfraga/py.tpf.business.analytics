@@ -1,6 +1,6 @@
 from typing import Dict, List
 from streamlit.delta_generator import DeltaGenerator
-from data.real_correlation import build_all
+from data.services.real_correlation import build_all
 from ui.components.cards import kpi_card
 from ui.components.charts import scatter_by_group, show_figure
 from ui.components.filters import selector

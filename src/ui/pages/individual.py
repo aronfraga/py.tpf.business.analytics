@@ -1,6 +1,6 @@
 from typing import Any, Dict, List, Optional, Tuple
 from streamlit.delta_generator import DeltaGenerator
-from data.real_individual import build_all
+from data.services.real_individual import build_all
 from ui.components.charts import (
     bar_chart, bar_chart_by_subject, horizontal_bar_chart, line_chart, multi_line_chart, show_figure)
 from ui.components.filters import selector

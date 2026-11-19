@@ -1,6 +1,6 @@
 from typing import Dict
 from streamlit.delta_generator import DeltaGenerator
-from data.real_performance import build_all
+from data.services.real_performance import build_all
 from ui.components.charts import bar_chart, bar_chart_by_subject, donut_chart, histogram, show_figure
 from ui.components.filters import selector
 from ui.components.template import GROUP_COLORS

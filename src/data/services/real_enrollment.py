@@ -1,6 +1,6 @@
 from typing import Any, Dict, List, Tuple
-from data.real_common import (load_all_traceability, load_enrollment_cross, load_enrollment_list, load_participation, sort_by_id_asc)
-from kpis.kpis_matricula import estudiantes_activos, resumen_activos_por_matricula
+from data.services.real_common import (load_all_traceability, load_enrollment_cross, load_enrollment_list, load_participation, sort_by_id_asc)
+from data.kpis.kpis_matricula import estudiantes_activos, resumen_activos_por_matricula
 import pandas as pd
 import streamlit as st
 import constants as const
