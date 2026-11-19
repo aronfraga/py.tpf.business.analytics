@@ -9,9 +9,10 @@ Dashboard académico que analiza la participación, las calificaciones y la matr
 ```
 .
 ├── README.md
+├── Trabajo Final Integrador - BI&A.md   consigna del trabajo
 ├── requirements.txt          dependencias de Python
-├── justificaciones.md        justificación de cada indicador (KPI)
-├── kpis_pendientes.md        indicadores calculados que la app todavía no muestra
+├── .gitignore                archivos que no se suben (entornos, secretos, salidas generadas)
+├── .streamlit/               configuración (tema) de Streamlit
 │
 ├── data/                     datos del proyecto
 │   ├── algebra/              reportes exportados de la plataforma y su versión limpia
@@ -19,7 +20,7 @@ Dashboard académico que analiza la participación, las calificaciones y la matr
 │   ├── probabilidadestadistica/
 │   ├── matriculados/         listados oficiales de matriculados
 │   ├── integrado/            las tres asignaturas unidas (lo que lee la aplicación)
-│   └── kpis/                 gráficos y tablas resultantes de los indicadores
+│   └── kpis/                 gráficos generados por los notebooks de indicadores (no se versiona)
 │
 ├── jupyter/                  INVESTIGACIÓN
 │   ├── algebra.ipynb
@@ -28,12 +29,16 @@ Dashboard académico que analiza la participación, las calificaciones y la matr
 │   ├── matriculados.ipynb
 │   ├── integracion.ipynb
 │   ├── utils_limpieza.py
-│   ├── kpis/                 un notebook por grupo de indicadores
-│   └── version_anterior/     versiones previas de los notebooks de limpieza
+│   └── kpis/                 un notebook por grupo de indicadores
+│       ├── calificaciones.ipynb
+│       ├── participacion.ipynb
+│       ├── matricula.ipynb
+│       └── cruces.ipynb
 │
 └── src/                      APLICACIÓN (lo que se despliega)
     ├── app.py                punto de entrada y navegación
     ├── constants.py          constantes del proyecto (nombres, textos, parámetros)
+    ├── .streamlit/           configuración (tema) de Streamlit
     ├── data/
     │   ├── kpis/             cálculo de los indicadores
     │   └── services/         preparan los datos que muestra cada pantalla
@@ -42,6 +47,8 @@ Dashboard académico que analiza la participación, las calificaciones y la matr
         ├── components/       tarjetas, gráficos, tablas y filtros reutilizables
         └── theme.css         estilos
 ```
+
+`data/kpis/` no existe hasta que se ejecutan los notebooks de `jupyter/kpis/`: ellos la crean y la llenan. La aplicación no la necesita.
 
 ## Investigación (`jupyter/`)
 
@@ -63,6 +70,9 @@ Es la parte que se publica. Lee los datos de `data/integrado/` y los muestra en 
 ## Cómo ejecutarla en la computadora
 
 ```bash
-pip install -r requirements.txt
-streamlit run src/app.py
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements.txt
+.venv/bin/streamlit run src/app.py
 ```
+
+La aplicación queda disponible en http://localhost:8501.
