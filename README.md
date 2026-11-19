@@ -1,141 +1,68 @@
 # TP Final - Business Intelligence & Analytics
 
-Guía para levantar el entorno `tpfinal` con conda, paso a paso.
+Dashboard académico que analiza la participación, las calificaciones y la matrícula de tres asignaturas: Álgebra, Algoritmos y Estructuras de Datos, y Probabilidad y Estadística.
 
-## Requisitos previos
+**Aplicación desplegada:** https://pytpfbusinessanalytics-z6hq7mpjphmtjaauw3ukgf.streamlit.app/
 
-- [Miniconda](https://docs.conda.io/en/latest/miniconda.html) o Anaconda instalado.
-- (Opcional) Driver ODBC de Microsoft para SQL Server (ODBC Driver 17 o 18), necesario para que `pyodbc` pueda conectarse a la base.
+## Estructura del proyecto
 
-## 1. Abrir una terminal con conda
-
-En Windows, abrir **Anaconda Prompt** (o Miniconda Prompt). Si conda no está en el PATH de PowerShell, se puede inicializar una vez con:
-
-```powershell
-conda init powershell
+```
+.
+├── README.md
+├── requirements.txt          dependencias de Python
+├── justificaciones.md        justificación de cada indicador (KPI)
+├── kpis_pendientes.md        indicadores calculados que la app todavía no muestra
+│
+├── data/                     datos del proyecto
+│   ├── algebra/              reportes exportados de la plataforma y su versión limpia
+│   ├── algoritmosestructuras/
+│   ├── probabilidadestadistica/
+│   ├── matriculados/         listados oficiales de matriculados
+│   ├── integrado/            las tres asignaturas unidas (lo que lee la aplicación)
+│   └── kpis/                 gráficos y tablas resultantes de los indicadores
+│
+├── jupyter/                  INVESTIGACIÓN
+│   ├── algebra.ipynb
+│   ├── algoritmosestructuras.ipynb
+│   ├── probabilidadestadistica.ipynb
+│   ├── matriculados.ipynb
+│   ├── integracion.ipynb
+│   ├── utils_limpieza.py
+│   ├── kpis/                 un notebook por grupo de indicadores
+│   └── version_anterior/     versiones previas de los notebooks de limpieza
+│
+└── src/                      APLICACIÓN (lo que se despliega)
+    ├── app.py                punto de entrada y navegación
+    ├── constants.py          constantes del proyecto (nombres, textos, parámetros)
+    ├── data/
+    │   ├── kpis/             cálculo de los indicadores
+    │   └── services/         preparan los datos que muestra cada pantalla
+    └── ui/
+        ├── pages/            las siete pantallas
+        ├── components/       tarjetas, gráficos, tablas y filtros reutilizables
+        └── theme.css         estilos
 ```
 
-y reabrir la terminal.
+## Investigación (`jupyter/`)
 
-## 2. Crear el entorno
+Es el trabajo previo con los datos, hecho en notebooks. Sigue este orden:
 
-```bash
-conda create -n tpfinal python=3.12 -y -c conda-forge
-```
+1. **Limpieza por asignatura** (`algebra`, `algoritmosestructuras`, `probabilidadestadistica`): toman los reportes exportados de la plataforma (calificaciones, participación y trazabilidad), corrigen errores y los guardan en formato Parquet.
+2. **Matriculados** (`matriculados`): consolida los listados oficiales de las tres asignaturas.
+3. **Integración** (`integracion`): une todo en `data/integrado/`.
+4. **Indicadores** (`kpis/`): calculan y justifican los indicadores de calificaciones, participación, matrícula y los cruces entre participación y notas.
 
-## 3. Instalar los paquetes
+## Aplicación (`src/`)
 
-```bash
-conda install -n tpfinal -c conda-forge pandas numpy scipy matplotlib seaborn scikit-learn statsmodels jupyterlab openpyxl pyarrow sqlalchemy pyodbc streamlit -y
-```
+Es la parte que se publica. Lee los datos de `data/integrado/` y los muestra en siete pantallas: General, Participación, Trazabilidad, Rendimiento Académico, Notas vs Participación, Individual, y Matrícula y Alertas.
 
-| Paquete | Uso |
-|---|---|
-| pandas, numpy, scipy | manipulación de datos y cálculo científico |
-| matplotlib, seaborn | gráficos |
-| scikit-learn, statsmodels | modelos de machine learning y estadística |
-| jupyterlab | notebooks |
-| openpyxl | lectura/escritura de Excel |
-| pyarrow | formato Parquet |
-| sqlalchemy, pyodbc | conexión a bases de datos (SQL Server) |
-| streamlit | dashboards / apps web |
+- `data/kpis/` calcula los indicadores a partir de los datos integrados.
+- `data/services/` toma esos resultados y arma las tablas de cada pantalla.
+- `ui/` dibuja las pantallas con Streamlit.
 
-## 4. Activar el entorno
+## Cómo ejecutarla en la computadora
 
 ```bash
-conda activate tpfinal
-```
-
-## 5. Verificar la instalación
-
-```bash
-python -c "import pandas, numpy, scipy, matplotlib, seaborn, sklearn, statsmodels, openpyxl, pyarrow, sqlalchemy, pyodbc, streamlit; print('ok')"
-jupyter lab --version
-streamlit --version
-```
-
-Debe imprimir `ok` y las versiones de JupyterLab y Streamlit.
-
-## 6. Usar el entorno
-
-Abrir JupyterLab (desde la carpeta del proyecto):
-
-```bash
-jupyter lab
-```
-
-Levantar una app de Streamlit:
-
-```bash
+pip install -r requirements.txt
 streamlit run src/app.py
-```
-
-## Alternativa: reproducir desde un archivo
-
-Para exportar el entorno y recrearlo en otra máquina:
-
-```bash
-# exportar (desde el entorno original)
-conda env export -n tpfinal --from-history > environment.yml
-
-# recrear
-conda env create -f environment.yml
-```
-
-## Comandos básicos de conda
-
-### Entornos
-
-```bash
-conda env list                          # listar todos los entornos (el activo lleva *)
-conda info --envs                       # igual que el anterior
-conda create -n <nombre> python=3.12    # crear un entorno nuevo
-conda activate <nombre>                 # activar un entorno
-conda activate tpfinal                  # activar este proyecto
-conda deactivate                        # salir del entorno actual (vuelve a base)
-conda env remove -n <nombre>            # borrar un entorno
-conda create -n <nuevo> --clone <viejo> # clonar un entorno
-conda rename -n <viejo> <nuevo>         # renombrar un entorno
-```
-
-### Cambiar de entorno
-
-No hace falta desactivar el actual: activar otro reemplaza al anterior.
-
-```bash
-conda activate tpfinal
-conda activate otro-entorno
-```
-
-Para saber en cuál estás: el prompt muestra `(nombre)` al inicio, o corré `conda info | findstr "active environment"` en Windows (`grep` en Linux/Mac).
-
-### Paquetes
-
-```bash
-conda list                          # paquetes del entorno activo
-conda list -n tpfinal               # paquetes de un entorno sin activarlo
-conda search <paquete>              # buscar versiones disponibles
-conda install <paquete>             # instalar en el entorno activo
-conda install -n tpfinal <paquete>  # instalar en un entorno específico
-conda install <paquete>=1.2.3       # instalar una versión puntual
-conda update <paquete>              # actualizar un paquete
-conda update --all                  # actualizar todo el entorno
-conda remove <paquete>              # desinstalar un paquete
-pip install <paquete>               # si no está en conda (usar con el entorno activo)
-```
-
-### Ejecutar sin activar
-
-```bash
-conda run -n tpfinal python script.py
-conda run -n tpfinal jupyter lab
-```
-
-### Mantenimiento
-
-```bash
-conda --version                     # versión de conda
-conda update conda                  # actualizar conda
-conda clean --all                   # liberar espacio (cachés y paquetes sin usar)
-conda config --show channels        # ver canales configurados
 ```
