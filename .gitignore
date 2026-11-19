@@ -1,74 +1,72 @@
-.vs/
-.vscode/
-.idea/
-*.suo
-*.user
-*.userosscache
-*.sln.docstates
-*.DotSettings.user
-*.rsuser
+# ---------------------------------------------------------------
+# Entornos virtuales
+# ---------------------------------------------------------------
+.venv/
+venv/
+env/
+ENV/
 
-*.exe
-*.pdb
-*.cache
-*.log
-*.tmp
-*.swp
-
-# Cachés generadas por Python
-__pycache__/
-*.pyc
-*.pyo
-
-project.lock.json
-artifacts/
-publish/
-PublishScripts/
-*.nupkg
-*.snupkg
-**/[Pp]ackages/*
-!**/[Pp]ackages/build/
-
-TestResults/
-[Tt]est[Rr]esult*/
-*.trx
-coverage/
-*.coverage
-*.coveragexml
-coverage.json
-coverage.cobertura.xml
-
-appsettings.Development.json
-appsettings.Local.json
-secrets.json
-*.pfx
-*.snk
+# ---------------------------------------------------------------
+# Secretos y credenciales (nunca subir)
+# ---------------------------------------------------------------
 .env
 .env.*
 !.env.example
-env/
-.venv/
-venv/
+secrets.toml
+**/.streamlit/secrets.toml
+secrets.json
+credentials*.json
+service-account*.json
+*.pem
+*.key
+*.p12
+*.pfx
 
-wwwroot/lib/
-node_modules/
-npm-debug.log*
+# ---------------------------------------------------------------
+# Python
+# ---------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
 
-*.mdf
-*.ldf
-*.ndf
-*.bak
-*.dacpac
+# ---------------------------------------------------------------
+# Jupyter
+# ---------------------------------------------------------------
+.ipynb_checkpoints/
 
-launchSettings.json
-.azure/
-.azurite/
-__azurite_db_*.json
-__blobstorage__/
-__queuestorage__/
-local.settings.json
+# ---------------------------------------------------------------
+# Salidas generadas por los notebooks (se recrean al ejecutarlos)
+# ---------------------------------------------------------------
+data/kpis/
 
+# ---------------------------------------------------------------
+# Editores y herramientas locales
+# ---------------------------------------------------------------
+.vscode/
+.idea/
+.vs/
+.claude/settings.local.json
+CLAUDE.local.md
+
+# ---------------------------------------------------------------
+# Sistema operativo
+# ---------------------------------------------------------------
 .DS_Store
 Thumbs.db
 ehthumbs.db
 Desktop.ini
+
+# ---------------------------------------------------------------
+# Temporales y respaldos
+# ---------------------------------------------------------------
+*.log
+*.tmp
+*.swp
+*.bak
+*~
